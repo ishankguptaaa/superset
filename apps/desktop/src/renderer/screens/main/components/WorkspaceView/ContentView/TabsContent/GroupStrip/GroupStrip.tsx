@@ -203,6 +203,57 @@ export function GroupStrip() {
 		removeTab(tabId);
 	};
 
+	const handleCloseOthers = useCallback(
+		(tabId: string) => {
+			const otherTabs = tabs.filter((t) => t.id !== tabId);
+			for (const t of otherTabs) {
+				removeTab(t.id);
+			}
+		},
+		[tabs, removeTab],
+	);
+
+	const handleCloseToRight = useCallback(
+		(_tabId: string, index: number) => {
+			const tabsToRight = tabs.slice(index + 1);
+			for (const t of tabsToRight) {
+				removeTab(t.id);
+			}
+		},
+		[tabs, removeTab],
+	);
+
+	const handleCloseAll = useCallback(() => {
+		for (const t of tabs) {
+			removeTab(t.id);
+		}
+	}, [tabs, removeTab]);
+
+	const handleDuplicateTab = useCallback(
+		(tabId: string) => {
+			if (!activeWorkspaceId) return;
+			// Determine the primary pane type of the tab to duplicate the right kind
+			const tabPanes = Object.values(panes).filter((p) => p.tabId === tabId);
+			const primaryPane = tabPanes[0];
+			if (!primaryPane) {
+				addTab(activeWorkspaceId);
+				return;
+			}
+			switch (primaryPane.type) {
+				case "chat-mastra":
+					addChatMastraTab(activeWorkspaceId);
+					break;
+				case "webview":
+					addBrowserTab(activeWorkspaceId, primaryPane.browser?.currentUrl);
+					break;
+				default:
+					addTab(activeWorkspaceId);
+					break;
+			}
+		},
+		[activeWorkspaceId, panes, addTab, addChatMastraTab, addBrowserTab],
+	);
+
 	const handleRenameGroup = (tabId: string, newName: string) => {
 		renameTab(tabId, newName);
 	};
@@ -299,9 +350,15 @@ export function GroupStrip() {
 											index={index}
 											isActive={tab.id === activeTabId}
 											status={tabStatusMap.get(tab.id) ?? null}
+											tabCount={tabs.length}
+											tabsToRightCount={tabs.length - index - 1}
 											onSelect={() => handleSelectGroup(tab.id)}
 											onClose={() => handleCloseGroup(tab.id)}
+											onCloseOthers={() => handleCloseOthers(tab.id)}
+											onCloseToRight={() => handleCloseToRight(tab.id, index)}
+											onCloseAll={handleCloseAll}
 											onRename={(newName) => handleRenameGroup(tab.id, newName)}
+											onDuplicate={() => handleDuplicateTab(tab.id)}
 											onPaneDrop={(paneId) => movePaneToTab(paneId, tab.id)}
 											onReorder={handleReorderTabs}
 										/>

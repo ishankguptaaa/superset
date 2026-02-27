@@ -7,13 +7,15 @@ import {
 } from "@superset/ui/ai-elements/conversation";
 import { Message, MessageContent } from "@superset/ui/ai-elements/message";
 import { ShimmerLabel } from "@superset/ui/ai-elements/shimmer-label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@superset/ui/tooltip";
 import {
+	CheckIcon,
+	CopyIcon,
 	FileIcon,
 	FileSearchIcon,
 	FileTextIcon,
-	ImageIcon,
 } from "lucide-react";
-import { type ReactNode, useCallback, useMemo } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { HiMiniChatBubbleLeftRight } from "react-icons/hi2";
 import { useTabsStore } from "renderer/stores/tabs/store";
 import { MastraToolCallBlock } from "../../../../ChatPane/ChatInterface/components/MastraToolCallBlock";
@@ -49,38 +51,37 @@ interface ChatMastraMessageListProps {
 	toolInputBuffers: MastraToolInputBuffers | undefined;
 }
 
-function ImagePart({ src, onClick }: { src: string; onClick?: () => void }) {
-	return (
-		<button type="button" className="cursor-zoom-in" onClick={onClick}>
-			<img
-				src={src}
-				alt="Attached"
-				className="max-h-48 rounded-lg object-contain"
-			/>
-		</button>
-	);
-}
-
-function FileChip({
-	filename,
+function AttachmentChip({
+	data,
 	mediaType,
+	filename,
+	onClick,
 }: {
-	filename?: string;
+	data: string;
 	mediaType: string;
+	filename?: string;
+	onClick?: () => void;
 }) {
-	const icon = mediaType.startsWith("image/") ? (
-		<ImageIcon className="size-3.5 shrink-0" />
-	) : mediaType === "application/pdf" ? (
-		<FileIcon className="size-3.5 shrink-0" />
-	) : (
-		<FileTextIcon className="size-3.5 shrink-0" />
-	);
-	const label = filename || mediaType.split("/").pop() || mediaType;
+	const isImage = mediaType.startsWith("image/");
+	const label = filename || (isImage ? "Image" : "Attachment");
+
 	return (
-		<div className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
-			{icon}
-			<span className="max-w-[150px] truncate">{label}</span>
-		</div>
+		<button
+			type="button"
+			className="flex h-8 items-center gap-1.5 rounded-md border border-foreground/20 bg-background/50 px-1.5 text-sm font-medium transition-colors hover:bg-background"
+			onClick={onClick}
+		>
+			<div className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded bg-background">
+				{isImage && data ? (
+					<img src={data} alt={label} className="size-5 object-cover" />
+				) : mediaType === "application/pdf" ? (
+					<FileIcon className="size-3 text-muted-foreground" />
+				) : (
+					<FileTextIcon className="size-3 text-muted-foreground" />
+				)}
+			</div>
+			<span className="max-w-[200px] truncate">{label}</span>
+		</button>
 	);
 }
 
@@ -241,11 +242,11 @@ function UserMessage({
 		[workspaceId, addFileViewerPane],
 	);
 
-	const images: Array<{ key: string; src: string }> = [];
-	const fileChips: Array<{
+	const attachments: Array<{
 		key: string;
-		filename?: string;
+		data: string;
 		mediaType: string;
+		filename?: string;
 	}> = [];
 	const textParts: Array<{ key: string; text: string }> = [];
 
@@ -261,54 +262,71 @@ function UserMessage({
 				(part.mimeType as string) ||
 				"application/octet-stream";
 			const data = (part.data as string) || (part.image as string) || "";
-			if (mime.startsWith("image/") && data) {
-				images.push({ key, src: data });
-			} else if (data) {
-				fileChips.push({
+			if (data) {
+				attachments.push({
 					key,
-					filename: part.filename as string | undefined,
+					data,
 					mediaType: mime,
+					filename: part.filename as string | undefined,
 				});
 			}
 		}
 	}
 
+	const fullText = textParts.map((tp) => tp.text).join("\n");
+	const [copied, setCopied] = useState(false);
+
+	const handleCopy = useCallback(() => {
+		if (!fullText) return;
+		navigator.clipboard.writeText(fullText);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
+	}, [fullText]);
+
 	return (
 		<div
-			className="flex flex-col items-end gap-2"
+			className="group/msg relative flex flex-col items-end gap-2"
 			data-chat-user-message="true"
 			data-message-id={message.id}
 		>
-			{images.length > 0 && (
-				<div className="flex max-w-[85%] flex-wrap gap-2">
-					{images.map((img) => (
-						<ImagePart
-							key={img.key}
-							src={img.src}
-							onClick={() => handleImageClick(img.src)}
-						/>
-					))}
-				</div>
+			{fullText && (
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<button
+							type="button"
+							onClick={handleCopy}
+							className="absolute -top-2 right-0 rounded-md border border-border bg-background p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/msg:opacity-100"
+						>
+							{copied ? (
+								<CheckIcon className="size-3.5" />
+							) : (
+								<CopyIcon className="size-3.5" />
+							)}
+						</button>
+					</TooltipTrigger>
+					{!copied && <TooltipContent side="top">Copy</TooltipContent>}
+				</Tooltip>
 			)}
-			{fileChips.length > 0 && (
-				<div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
-					{fileChips.map((chip) => (
-						<FileChip
-							key={chip.key}
-							filename={chip.filename}
-							mediaType={chip.mediaType}
-						/>
-					))}
-				</div>
-			)}
-			{textParts.map((tp) => (
-				<div
-					key={tp.key}
-					className="max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 text-sm text-foreground whitespace-pre-wrap"
-				>
-					{tp.text}
-				</div>
-			))}
+			<div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 text-sm text-foreground">
+				{attachments.length > 0 && (
+					<div className="mb-2 flex flex-wrap gap-2">
+						{attachments.map((att) => (
+							<AttachmentChip
+								key={att.key}
+								data={att.data}
+								mediaType={att.mediaType}
+								filename={att.filename}
+								onClick={() => handleImageClick(att.data)}
+							/>
+						))}
+					</div>
+				)}
+				{textParts.map((tp) => (
+					<span key={tp.key} className="whitespace-pre-wrap">
+						{tp.text}
+					</span>
+				))}
+			</div>
 		</div>
 	);
 }
@@ -368,13 +386,18 @@ function AssistantMessage({
 			if (mime.startsWith("image/") && data) {
 				nodes.push(
 					<div key={`${message.id}-${partIndex}`} className="max-w-[85%]">
-						<ImagePart src={data} />
+						<img
+							src={data}
+							alt="Generated"
+							className="max-h-48 rounded-lg object-contain"
+						/>
 					</div>,
 				);
 			} else if (data) {
 				nodes.push(
-					<FileChip
+					<AttachmentChip
 						key={`${message.id}-${partIndex}`}
+						data={data}
 						filename={rawPart.filename as string | undefined}
 						mediaType={mime}
 					/>,

@@ -3,6 +3,7 @@ import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
+	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@superset/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@superset/ui/tooltip";
@@ -11,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 import { HiMiniXMark } from "react-icons/hi2";
-import { LuPencil } from "react-icons/lu";
+import { LuCircleX, LuCopy, LuPanelRight, LuPencil, LuX } from "react-icons/lu";
 import { MosaicDragType } from "react-mosaic-component";
 import { StatusIndicator } from "renderer/screens/main/components/StatusIndicator";
 import { useDragPaneStore } from "renderer/stores/drag-pane-store";
@@ -25,9 +26,15 @@ interface GroupItemProps {
 	index: number;
 	isActive: boolean;
 	status: PaneStatus | null;
+	tabCount: number;
+	tabsToRightCount: number;
 	onSelect: () => void;
 	onClose: () => void;
+	onCloseOthers: () => void;
+	onCloseToRight: () => void;
+	onCloseAll: () => void;
 	onRename: (newName: string) => void;
+	onDuplicate: () => void;
 	onPaneDrop?: (paneId: string) => void;
 	onReorder?: (fromIndex: number, toIndex: number) => void;
 }
@@ -37,9 +44,15 @@ export function GroupItem({
 	index,
 	isActive,
 	status,
+	tabCount,
+	tabsToRightCount,
 	onSelect,
 	onClose,
+	onCloseOthers,
+	onCloseToRight,
+	onCloseAll,
 	onRename,
+	onDuplicate,
 	onPaneDrop,
 	onReorder,
 }: GroupItemProps) {
@@ -239,13 +252,33 @@ export function GroupItem({
 				</div>
 			</ContextMenuTrigger>
 			<ContextMenuContent>
+				<ContextMenuItem onSelect={onClose}>
+					<LuX className="size-4 mr-2" />
+					Close
+				</ContextMenuItem>
+				<ContextMenuItem onSelect={onCloseOthers} disabled={tabCount <= 1}>
+					<LuCircleX className="size-4 mr-2" />
+					Close Others
+				</ContextMenuItem>
+				<ContextMenuItem
+					onSelect={onCloseToRight}
+					disabled={tabsToRightCount === 0}
+				>
+					<LuPanelRight className="size-4 mr-2" />
+					Close to the Right
+				</ContextMenuItem>
+				<ContextMenuItem onSelect={onCloseAll}>
+					<LuX className="size-4 mr-2" />
+					Close All
+				</ContextMenuItem>
+				<ContextMenuSeparator />
 				<ContextMenuItem onSelect={startEditing}>
 					<LuPencil className="size-4 mr-2" />
 					Rename
 				</ContextMenuItem>
-				<ContextMenuItem onSelect={onClose}>
-					<HiMiniXMark className="size-4 mr-2" />
-					Close
+				<ContextMenuItem onSelect={onDuplicate}>
+					<LuCopy className="size-4 mr-2" />
+					Duplicate Tab
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>
