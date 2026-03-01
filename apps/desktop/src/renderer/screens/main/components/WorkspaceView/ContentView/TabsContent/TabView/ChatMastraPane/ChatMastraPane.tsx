@@ -226,6 +226,17 @@ export function ChatMastraPane({
 		[collections.chatSessions, workspaceId],
 	);
 	const sessions = sessionsData ?? [];
+	const hasCurrentSessionRecord = Boolean(
+		sessionId && sessions.some((item) => item.id === sessionId),
+	);
+	const [isSessionInitializing, setIsSessionInitializing] = useState(
+		Boolean(sessionId && !hasCurrentSessionRecord),
+	);
+	const ensureSessionRecordRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		setIsSessionInitializing(Boolean(sessionId && !hasCurrentSessionRecord));
+	}, [hasCurrentSessionRecord, sessionId]);
 
 	const handleSelectSession = useCallback(
 		(nextSessionId: string) => {
@@ -288,7 +299,7 @@ export function ChatMastraPane({
 				session_id: newSessionId,
 				organization_id: organizationId,
 			});
-			return { created: true as const };
+			return { created: true as const, sessionId: newSessionId };
 		} catch (error) {
 			reportChatMastraError({
 				operation: "session.create",
@@ -334,6 +345,37 @@ export function ChatMastraPane({
 		},
 		[organizationId, paneId, sessionId, switchChatMastraSession, workspaceId],
 	);
+
+	useEffect(() => {
+		if (!sessionId || !organizationId) return;
+		if (hasCurrentSessionRecord) return;
+
+		const ensureKey = `${organizationId}:${workspaceId}:${sessionId}`;
+		if (ensureSessionRecordRef.current === ensureKey) return;
+		ensureSessionRecordRef.current = ensureKey;
+		setIsSessionInitializing(true);
+
+		void createSessionRecord({
+			sessionId,
+			organizationId,
+			workspaceId,
+		})
+			.catch((error) => {
+				reportChatMastraError({
+					operation: "session.create",
+					error,
+					sessionId,
+					workspaceId,
+					paneId,
+					organizationId,
+				});
+				toast.error("Failed to initialize chat session");
+				ensureSessionRecordRef.current = null;
+			})
+			.finally(() => {
+				setIsSessionInitializing(false);
+			});
+	}, [hasCurrentSessionRecord, organizationId, paneId, sessionId, workspaceId]);
 
 	useEffect(() => {
 		if (sessionId) return;
@@ -407,6 +449,7 @@ export function ChatMastraPane({
 								<SessionSelector
 									currentSessionId={sessionId}
 									sessions={sessionItems}
+									isSessionInitializing={isSessionInitializing}
 									onSelectSession={handleSelectSession}
 									onNewChat={handleNewChat}
 									onDeleteSession={handleDeleteSession}

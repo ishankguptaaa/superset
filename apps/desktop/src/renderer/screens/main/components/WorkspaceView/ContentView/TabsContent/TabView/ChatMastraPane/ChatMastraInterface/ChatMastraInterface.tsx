@@ -24,6 +24,11 @@ import { ChatMastraMessageList } from "./components/ChatMastraMessageList";
 import { McpControls } from "./components/McpControls";
 import { useMcpUi } from "./hooks/useMcpUi";
 import type { ChatMastraInterfaceProps } from "./types";
+import {
+	type ChatSendMessageInput,
+	sendMessageWithRetry,
+	toSendFailureMessage,
+} from "./utils/sendMessage";
 import { toMastraImages } from "./utils/toMastraImages";
 
 function useAvailableModels(): {
@@ -115,6 +120,19 @@ export function ChatMastraInterface({
 			}
 		},
 		[organizationId, sessionId, workspaceId],
+	);
+
+	const sendMessageToSession = useCallback(
+		async (targetSessionId: string, input: ChatSendMessageInput) => {
+			await sendMessageWithRetry(async () =>
+				chatMastraServiceTrpcUtils.client.session.sendMessage.mutate({
+					sessionId: targetSessionId,
+					...(cwd ? { cwd } : {}),
+					...input,
+				}),
+			);
+		},
+		[chatMastraServiceTrpcUtils, cwd],
 	);
 
 	const canAbort = Boolean(isRunning);
@@ -249,7 +267,7 @@ export function ChatMastraInterface({
 			setSubmitStatus("submitted");
 			clearRuntimeError();
 
-			await commands.sendMessage({
+			const sendInput: ChatSendMessageInput = {
 				payload: {
 					content: text || "",
 					...(images.length > 0 ? { images } : {}),
@@ -257,11 +275,39 @@ export function ChatMastraInterface({
 				metadata: {
 					model: activeModel?.id,
 				},
-			});
+			};
+
+			let targetSessionId = sessionId;
+			if (!targetSessionId) {
+				const startResult = await onStartFreshSession();
+				if (!startResult.created || !startResult.sessionId) {
+					const startErrorMessage =
+						startResult.errorMessage ??
+						"Failed to create a chat session. Please retry.";
+					setRuntimeErrorMessage(startErrorMessage);
+					throw new Error(startErrorMessage);
+				}
+				targetSessionId = startResult.sessionId;
+			}
+
+			try {
+				if (sessionId && targetSessionId === sessionId) {
+					await commands.sendMessage(sendInput);
+				} else {
+					await sendMessageToSession(targetSessionId, sendInput);
+				}
+			} catch (error) {
+				const sendErrorMessage = toSendFailureMessage(error);
+				setRuntimeErrorMessage(sendErrorMessage);
+				if (error instanceof Error && error.message === sendErrorMessage) {
+					throw error;
+				}
+				throw new Error(sendErrorMessage);
+			}
 
 			posthog.capture("chat_message_sent", {
 				workspace_id: workspaceId,
-				session_id: sessionId,
+				session_id: targetSessionId,
 				organization_id: organizationId,
 				model_id: activeModel?.id ?? null,
 				mention_count: 0,
@@ -276,9 +322,12 @@ export function ChatMastraInterface({
 			clearRuntimeError,
 			commands,
 			messages?.length,
+			onStartFreshSession,
 			organizationId,
 			resolveSlashCommandInput,
+			sendMessageToSession,
 			sessionId,
+			setRuntimeErrorMessage,
 			workspaceId,
 		],
 	);
@@ -307,7 +356,7 @@ export function ChatMastraInterface({
 
 	const handleSlashCommandSend = useCallback(
 		(command: SlashCommand) => {
-			void handleSend({ text: `/${command.name}`, files: [] });
+			void handleSend({ text: `/${command.name}`, files: [] }).catch(() => {});
 		},
 		[handleSend],
 	);
@@ -345,9 +394,7 @@ export function ChatMastraInterface({
 					thinkingEnabled={thinkingEnabled}
 					setThinkingEnabled={setThinkingEnabled}
 					slashCommands={slashCommands}
-					onSend={(message) => {
-						void handleSend(message);
-					}}
+					onSend={handleSend}
 					onSubmitStart={() => setSubmitStatus("submitted")}
 					onSubmitEnd={() => {
 						if (!canAbort) setSubmitStatus(undefined);

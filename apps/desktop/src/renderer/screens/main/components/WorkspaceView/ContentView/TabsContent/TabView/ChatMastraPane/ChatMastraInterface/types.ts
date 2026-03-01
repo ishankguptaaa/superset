@@ -15,6 +15,7 @@ export interface ChatMastraInterfaceProps {
 	cwd: string;
 	onStartFreshSession: () => Promise<{
 		created: boolean;
+		sessionId?: string;
 		errorMessage?: string;
 	}>;
 	onRawSnapshotChange?: (snapshot: ChatMastraRawSnapshot) => void;

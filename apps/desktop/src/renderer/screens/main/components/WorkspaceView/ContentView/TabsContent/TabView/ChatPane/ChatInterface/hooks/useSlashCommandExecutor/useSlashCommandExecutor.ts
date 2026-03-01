@@ -14,6 +14,7 @@ interface UseSlashCommandExecutorOptions {
 	canAbort: boolean;
 	onStartFreshSession: () => Promise<{
 		created: boolean;
+		sessionId?: string;
 		errorMessage?: string;
 	}>;
 	onStopActiveResponse: () => void;
