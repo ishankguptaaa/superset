@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { settings, workspaces } from "@superset/local-db";
-import { and, eq, isNull } from "drizzle-orm";
+import { workspaces } from "@superset/local-db";
+import { eq } from "drizzle-orm";
 import {
 	app,
 	BrowserWindow,
@@ -19,10 +19,7 @@ import {
 } from "main/lib/terminal";
 import { getTerminalHostClient } from "main/lib/terminal-host/client";
 import type { ListSessionsResponse } from "main/lib/terminal-host/types";
-import {
-	openWorkspaceIndexWindow,
-	openWorkspaceWindow,
-} from "main/lib/window-manager";
+import { openLastActiveWorkspaceWindow } from "main/lib/window-manager";
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -126,35 +123,7 @@ function openSessionInSuperset(workspaceId: string): void {
 }
 
 function openNewWindow(): void {
-	try {
-		const appSettings = localDb
-			.select({ lastActiveWorkspaceId: settings.lastActiveWorkspaceId })
-			.from(settings)
-			.get();
-		const lastActiveWorkspaceId = appSettings?.lastActiveWorkspaceId;
-
-		if (lastActiveWorkspaceId) {
-			const workspace = localDb
-				.select({ id: workspaces.id })
-				.from(workspaces)
-				.where(
-					and(
-						eq(workspaces.id, lastActiveWorkspaceId),
-						isNull(workspaces.deletingAt),
-					),
-				)
-				.get();
-
-			if (workspace?.id) {
-				openWorkspaceWindow({ workspaceId: workspace.id });
-				return;
-			}
-		}
-	} catch (error) {
-		console.warn("[Tray] Failed to resolve last active workspace:", error);
-	}
-
-	openWorkspaceIndexWindow();
+	openLastActiveWorkspaceWindow();
 }
 
 async function killSession(paneId: string): Promise<void> {

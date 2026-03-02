@@ -4,6 +4,7 @@ import { env } from "main/env.main";
 import { appState } from "main/lib/app-state";
 import { hotkeysEmitter } from "main/lib/hotkeys-events";
 import { resetTerminalStateDev } from "main/lib/terminal/dev-reset";
+import { openLastActiveWorkspaceWindow } from "main/lib/window-manager";
 import {
 	getCurrentPlatform,
 	getEffectiveHotkey,
@@ -38,6 +39,7 @@ export function registerMenuHotkeyUpdates() {
 
 export function createApplicationMenu() {
 	const closeAccelerator = getMenuAccelerator("CLOSE_WINDOW");
+	const newWindowAccelerator = getMenuAccelerator("NEW_WINDOW");
 	const showHotkeysAccelerator = getMenuAccelerator("SHOW_HOTKEYS");
 	const openSettingsAccelerator = getMenuAccelerator("OPEN_SETTINGS");
 
@@ -68,14 +70,22 @@ export function createApplicationMenu() {
 				{ role: "togglefullscreen" },
 			],
 		},
-		{
-			label: "Window",
-			submenu: [
-				{ role: "minimize" },
-				{ role: "zoom" },
-				{ type: "separator" },
-				{ role: "close", accelerator: closeAccelerator },
-			],
+			{
+				label: "Window",
+				submenu: [
+					{
+						label: "New Window",
+						accelerator: newWindowAccelerator,
+						click: () => {
+							openLastActiveWorkspaceWindow();
+						},
+					},
+					{ type: "separator" },
+					{ role: "minimize" },
+					{ role: "zoom" },
+					{ type: "separator" },
+					{ role: "close", accelerator: closeAccelerator },
+				],
 		},
 		{
 			label: "Help",

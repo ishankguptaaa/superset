@@ -1,6 +1,9 @@
 import { join } from "node:path";
+import { settings, workspaces } from "@superset/local-db";
+import { and, eq, isNull } from "drizzle-orm";
 import { BrowserWindow, nativeTheme } from "electron";
 import { createWindow } from "lib/electron-app/factories/windows/create";
+import { localDb } from "main/lib/local-db";
 import { PLATFORM } from "shared/constants";
 import { productName } from "~/package.json";
 
@@ -121,4 +124,38 @@ export function openWorkspaceWindow({
 
 export function openWorkspaceIndexWindow(): BrowserWindow {
 	return openWindowWithRoute({ path: "/workspace" });
+}
+
+export function openLastActiveWorkspaceWindow(): BrowserWindow {
+	try {
+		const appSettings = localDb
+			.select({ lastActiveWorkspaceId: settings.lastActiveWorkspaceId })
+			.from(settings)
+			.get();
+		const lastActiveWorkspaceId = appSettings?.lastActiveWorkspaceId;
+
+		if (lastActiveWorkspaceId) {
+			const workspace = localDb
+				.select({ id: workspaces.id })
+				.from(workspaces)
+				.where(
+					and(
+						eq(workspaces.id, lastActiveWorkspaceId),
+						isNull(workspaces.deletingAt),
+					),
+				)
+				.get();
+
+			if (workspace?.id) {
+				return openWorkspaceWindow({ workspaceId: workspace.id });
+			}
+		}
+	} catch (error) {
+		console.warn(
+			"[window-manager] Failed to resolve last active workspace:",
+			error,
+		);
+	}
+
+	return openWorkspaceIndexWindow();
 }
