@@ -26,6 +26,7 @@ import { useMcpUi } from "./hooks/useMcpUi";
 import type { ChatMastraInterfaceProps } from "./types";
 import {
 	type ChatSendMessageInput,
+	sendMessageForSession,
 	sendMessageOnce,
 	toSendFailureMessage,
 } from "./utils/sendMessage";
@@ -280,40 +281,22 @@ export function ChatMastraInterface({
 			};
 
 			let targetSessionId = sessionId;
-			if (!targetSessionId) {
-				const startResult = await onStartFreshSession();
-				if (!startResult.created || !startResult.sessionId) {
-					const startErrorMessage =
-						startResult.errorMessage ??
-						"Failed to create a chat session. Please retry.";
-					setRuntimeErrorMessage(startErrorMessage);
-					throw new Error(startErrorMessage);
-				}
-				targetSessionId = startResult.sessionId;
-			}
-
-			if (sessionId && targetSessionId === sessionId && !isSessionReady) {
-				const ensured = await ensureSessionReady();
-				if (!ensured) {
-					const persistErrorMessage =
-						"Chat session failed to initialize. Please wait a moment and retry.";
-					setRuntimeErrorMessage(persistErrorMessage);
-					throw new Error(persistErrorMessage);
-				}
-			}
-
 			try {
-				if (sessionId && targetSessionId === sessionId) {
-					await commands.sendMessage(sendInput);
-				} else {
-					await sendMessageToSession(targetSessionId, sendInput);
-				}
+				const sendResult = await sendMessageForSession({
+					currentSessionId: sessionId,
+					isSessionReady,
+					ensureSessionReady,
+					onStartFreshSession,
+					sendToCurrentSession: () =>
+						sendMessageOnce(() => commands.sendMessage(sendInput)),
+					sendToSession: (nextSessionId) =>
+						sendMessageToSession(nextSessionId, sendInput),
+				});
+				targetSessionId = sendResult.targetSessionId;
 			} catch (error) {
 				const sendErrorMessage = toSendFailureMessage(error);
 				setRuntimeErrorMessage(sendErrorMessage);
-				if (error instanceof Error && error.message === sendErrorMessage) {
-					throw error;
-				}
+				if (error instanceof Error) throw error;
 				throw new Error(sendErrorMessage);
 			}
 
@@ -370,7 +353,11 @@ export function ChatMastraInterface({
 
 	const handleSlashCommandSend = useCallback(
 		(command: SlashCommand) => {
-			void handleSend({ text: `/${command.name}`, files: [] }).catch(() => {});
+			void handleSend({ text: `/${command.name}`, files: [] }).catch(
+				(error) => {
+					console.debug("[chat-mastra] handleSlashCommandSend error", error);
+				},
+			);
 		},
 		[handleSend],
 	);

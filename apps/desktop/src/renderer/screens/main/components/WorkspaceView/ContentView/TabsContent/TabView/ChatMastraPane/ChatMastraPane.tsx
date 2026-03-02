@@ -448,7 +448,6 @@ export function ChatMastraPane({
 				sessionInitRetryCountRef.current = nextRetry;
 				if (nextRetry <= SESSION_INIT_MAX_RETRIES) {
 					sessionInitRetryTimeoutRef.current = setTimeout(() => {
-						if (ensureSessionRecordRef.current !== ensureKey) return;
 						sessionInitRetryTimeoutRef.current = null;
 						setSessionInitRetryToken((token) => token + 1);
 					}, SESSION_INIT_RETRY_DELAY_MS);
