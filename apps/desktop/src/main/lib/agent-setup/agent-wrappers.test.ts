@@ -132,7 +132,7 @@ describe("agent-wrappers copilot", () => {
 		expect(wrapper).toContain('"type":"task_started"');
 		expect(wrapper).toContain('_superset_last_turn_id=""');
 		expect(wrapper).toContain('_superset_last_approval_id=""');
-		expect(wrapper).toContain('_superset_debug_hooks="0"');
+		expect(wrapper).toContain('_superset_debug_hooks="1"');
 		expect(wrapper).toContain('_superset_emit_event()');
 		expect(wrapper).toContain("_superset_turn_id=$(printf");
 		expect(wrapper).toContain("_superset_approval_id=$(printf");

@@ -2,18 +2,16 @@
 # For per-prompt Start notifications and permission requests, watch the TUI
 # session log for task_started and approval_request events.
 if [ -n "$SUPERSET_TAB_ID" ] && [ -f "{{NOTIFY_PATH}}" ]; then
-  _superset_debug_hooks="0"
+  _superset_debug_hooks="1"
   if [ -n "$SUPERSET_DEBUG_HOOKS" ]; then
     case "$SUPERSET_DEBUG_HOOKS" in
-      1|true|TRUE|True|yes|YES|on|ON)
-        _superset_debug_hooks="1"
-        ;;
-      *)
+      0|false|FALSE|False|no|NO|off|OFF)
         _superset_debug_hooks="0"
         ;;
+      *)
+        _superset_debug_hooks="1"
+        ;;
     esac
-  elif [ "$SUPERSET_ENV" = "development" ] || [ "$NODE_ENV" = "development" ]; then
-    _superset_debug_hooks="1"
   fi
 
   export CODEX_TUI_RECORD_SESSION=1
