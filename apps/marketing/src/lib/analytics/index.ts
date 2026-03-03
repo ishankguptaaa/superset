@@ -25,5 +25,5 @@ export function track(
 	properties?: Record<string, unknown>,
 ): void {
 	posthog.capture(event, properties);
-	getOutlit().track(event, toOutlitProperties(properties));
+	getOutlit()?.track(event, toOutlitProperties(properties));
 }

@@ -5,7 +5,9 @@ import { ANALYTICS_CONSENT_KEY } from "@/lib/constants";
 
 let instance: Outlit | undefined;
 
-export function getOutlit(): Outlit {
+export function getOutlit(): Outlit | undefined {
+	if (typeof window === "undefined") return undefined;
+
 	if (!instance) {
 		instance = new Outlit({
 			publicKey: env.NEXT_PUBLIC_OUTLIT_KEY,
@@ -14,10 +16,7 @@ export function getOutlit(): Outlit {
 		});
 
 		// Respect prior consent choice — disable tracking if user previously opted out
-		if (
-			typeof window !== "undefined" &&
-			localStorage.getItem(ANALYTICS_CONSENT_KEY) === "declined"
-		) {
+		if (localStorage.getItem(ANALYTICS_CONSENT_KEY) === "declined") {
 			instance.disableTracking();
 		}
 	}
