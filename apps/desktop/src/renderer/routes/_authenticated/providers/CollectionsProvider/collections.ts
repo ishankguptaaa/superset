@@ -26,7 +26,12 @@ import superjson from "superjson";
 import { z } from "zod";
 
 const columnMapper = snakeCamelMapper();
-const electricUrl = `${env.NEXT_PUBLIC_ELECTRIC_URL}/v1/shape`;
+
+let electricUrl = `${env.NEXT_PUBLIC_API_URL}/api/electric/v1/shape`;
+
+export function setElectricUrl(url: string) {
+	electricUrl = `${url}/v1/shape`;
+}
 
 const apiKeyDisplaySchema = z.object({
 	id: z.string(),

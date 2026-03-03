@@ -31,20 +31,9 @@ export function buildUpstreamUrl(
 	whereClause: WhereClause,
 	env: Env,
 ): URL {
-	const useCloud = env.ELECTRIC_SOURCE_ID && env.ELECTRIC_SOURCE_SECRET;
-
-	const upstream = useCloud
-		? new URL("/v1/shape", env.ELECTRIC_CLOUD_URL)
-		: new URL(env.ELECTRIC_URL ?? "http://localhost:3149/v1/shape");
-
-	if (useCloud) {
-		// biome-ignore lint/style/noNonNullAssertion: guarded by useCloud
-		upstream.searchParams.set("source_id", env.ELECTRIC_SOURCE_ID!);
-		// biome-ignore lint/style/noNonNullAssertion: guarded by useCloud
-		upstream.searchParams.set("secret", env.ELECTRIC_SOURCE_SECRET!);
-	} else if (env.ELECTRIC_SECRET) {
-		upstream.searchParams.set("secret", env.ELECTRIC_SECRET);
-	}
+	const upstream = new URL("/v1/shape", env.ELECTRIC_CLOUD_URL);
+	upstream.searchParams.set("source_id", env.ELECTRIC_SOURCE_ID);
+	upstream.searchParams.set("secret", env.ELECTRIC_SOURCE_SECRET);
 
 	for (const [key, value] of clientUrl.searchParams) {
 		if (PROTOCOL_PARAMS.has(key)) {
