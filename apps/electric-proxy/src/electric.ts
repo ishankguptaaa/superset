@@ -1,11 +1,6 @@
 import type { AuthContext, WhereClause } from "./auth";
 import type { Env } from "./types";
 
-/**
- * Electric protocol query params that should be forwarded from the client request
- * to the upstream Electric Cloud service.
- * Source: @electric-sql/client/src/constants.ts
- */
 const PROTOCOL_PARAMS = new Set([
 	"live",
 	"live_sse",
@@ -24,7 +19,6 @@ const PROTOCOL_PARAMS = new Set([
 	"cache-buster",
 ]);
 
-/** Column allowlists for sensitive tables */
 const COLUMN_RESTRICTIONS: Record<string, string> = {
 	"auth.apikeys": "id,name,start,created_at,last_request",
 	integration_connections:
@@ -44,15 +38,14 @@ export function buildUpstreamUrl(
 		: new URL(env.ELECTRIC_URL ?? "http://localhost:3149/v1/shape");
 
 	if (useCloud) {
-		// biome-ignore lint/style/noNonNullAssertion: guarded by useCloud check
+		// biome-ignore lint/style/noNonNullAssertion: guarded by useCloud
 		upstream.searchParams.set("source_id", env.ELECTRIC_SOURCE_ID!);
-		// biome-ignore lint/style/noNonNullAssertion: guarded by useCloud check
+		// biome-ignore lint/style/noNonNullAssertion: guarded by useCloud
 		upstream.searchParams.set("secret", env.ELECTRIC_SOURCE_SECRET!);
 	} else if (env.ELECTRIC_SECRET) {
 		upstream.searchParams.set("secret", env.ELECTRIC_SECRET);
 	}
 
-	// Forward Electric protocol params from the client request
 	for (const [key, value] of clientUrl.searchParams) {
 		if (PROTOCOL_PARAMS.has(key)) {
 			upstream.searchParams.set(key, value);
@@ -76,12 +69,6 @@ export function buildUpstreamUrl(
 	return upstream;
 }
 
-/**
- * Build a cache key URL scoped to the auth context. For most tables, the where
- * clause already contains the organizationId so the cache key is naturally
- * org-scoped. For `auth.organizations`, the where clause contains user-specific
- * org IDs — less cache sharing but no cross-user leakage.
- */
 export function buildCacheKey(upstreamUrl: URL, _auth: AuthContext): string {
 	return upstreamUrl.toString();
 }

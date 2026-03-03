@@ -519,9 +519,10 @@ step_write_env() {
 PORTSJSON
   success "Port name mapping written to .superset/ports.json"
 
-  # Generate apps/electric-proxy/.dev.vars for local wrangler dev
   cat > apps/electric-proxy/.dev.vars <<DEVVARS
 AUTH_URL=http://localhost:$API_PORT
+ELECTRIC_URL=http://localhost:$ELECTRIC_PORT/v1/shape
+ELECTRIC_SECRET=${ELECTRIC_SECRET:-local_electric_dev_secret}
 ELECTRIC_CLOUD_URL=${ELECTRIC_CLOUD_URL:-https://api.electric-sql.cloud}
 ELECTRIC_SOURCE_ID=${ELECTRIC_SOURCE_ID:-}
 ELECTRIC_SOURCE_SECRET=${ELECTRIC_SOURCE_SECRET:-}

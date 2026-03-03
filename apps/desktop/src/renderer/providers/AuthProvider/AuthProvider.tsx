@@ -31,9 +31,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 							err,
 						);
 					}
-					const res = await authClient.token();
-					if (res.data?.token) {
-						setJwt(res.data.token);
+					try {
+						const res = await authClient.token();
+						if (res.data?.token) {
+							setJwt(res.data.token);
+						}
+					} catch (err) {
+						console.warn(
+							"[AuthProvider] JWT fetch failed during hydration",
+							err,
+						);
 					}
 				}
 			}
