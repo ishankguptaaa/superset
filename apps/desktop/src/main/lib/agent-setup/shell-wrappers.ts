@@ -46,7 +46,14 @@ function writeFileIfChanged(
 }
 
 /** Agent binaries that get wrapper shims to guarantee resolution. */
-const SHIMMED_BINARIES = ["claude", "codex", "opencode", "gemini", "copilot"];
+const SHIMMED_BINARIES = [
+	"claude",
+	"codex",
+	"opencode",
+	"gemini",
+	"copilot",
+	"mastracode",
+];
 
 /**
  * Shell function shims that override PATH-based lookup.
@@ -125,6 +132,7 @@ export ZDOTDIR="${paths.ZSH_DIR}"
 	const zloginPath = path.join(paths.ZSH_DIR, ".zlogin");
 	const zloginScript = `# Superset zsh login wrapper
 _superset_home="\${SUPERSET_ORIG_ZDOTDIR:-$HOME}"
+export ZDOTDIR="$_superset_home"
 if [[ -o interactive ]]; then
   [[ -f "$_superset_home/.zlogin" ]] && source "$_superset_home/.zlogin"
 fi

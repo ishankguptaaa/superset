@@ -1,12 +1,14 @@
 import { BashTool } from "@superset/ui/ai-elements/bash-tool";
 import { FileDiffTool } from "@superset/ui/ai-elements/file-diff-tool";
-import { UserQuestionTool } from "@superset/ui/ai-elements/user-question-tool";
 import { WebFetchTool } from "@superset/ui/ai-elements/web-fetch-tool";
 import { WebSearchTool } from "@superset/ui/ai-elements/web-search-tool";
 import { getToolName } from "ai";
-import { FileIcon, FolderIcon, MessageCircleQuestionIcon } from "lucide-react";
-import { useCallback } from "react";
+import { FileIcon, FolderIcon } from "lucide-react";
+import { useCallback, useMemo } from "react";
+import { posthog } from "renderer/lib/posthog";
+import { useChangesStore } from "renderer/stores/changes";
 import { useTabsStore } from "renderer/stores/tabs/store";
+import type { ChangeCategory } from "shared/changes-types";
 import { READ_ONLY_TOOLS } from "../../constants";
 import { normalizeWorkspaceFilePath } from "../../utils/file-paths";
 import type { ToolPart } from "../../utils/tool-helpers";
@@ -17,8 +19,10 @@ import {
 	toWsToolState,
 } from "../../utils/tool-helpers";
 import { ReadOnlyToolCall } from "../ReadOnlyToolCall";
+import { AskUserQuestionToolCall } from "./components/AskUserQuestionToolCall";
 import { EditToolExpandedDiff } from "./components/EditToolExpandedDiff";
 import { GenericToolCall } from "./components/GenericToolCall";
+import { SubagentToolCall } from "./components/SubagentToolCall";
 import { getExecuteCommandViewModel } from "./utils/getExecuteCommandViewModel";
 import { getWebSearchViewModel } from "./utils/getWebSearchViewModel";
 
@@ -26,34 +30,140 @@ interface MastraToolCallBlockProps {
 	part: ToolPart;
 	workspaceId?: string;
 	workspaceCwd?: string;
-	onAnswer?: (toolCallId: string, answers: Record<string, string>) => void;
+	sessionId?: string | null;
+	organizationId?: string | null;
+	onAnswer?: (
+		toolCallId: string,
+		answers: Record<string, string>,
+	) => Promise<void> | void;
+}
+
+interface DiffPaneTarget {
+	diffCategory: ChangeCategory;
+	commitHash?: string;
+	oldPath?: string;
 }
 
 export function MastraToolCallBlock({
 	part,
 	workspaceId,
 	workspaceCwd,
+	sessionId,
+	organizationId,
 	onAnswer,
 }: MastraToolCallBlockProps) {
 	const args = getArgs(part);
 	const result = getResult(part);
 	const state = toWsToolState(part);
 	const toolName = normalizeToolName(getToolName(part));
+	const hideUnchangedRegions = useChangesStore(
+		(store) => store.hideUnchangedRegions,
+	);
 	const addFileViewerPane = useTabsStore((store) => store.addFileViewerPane);
+	const panes = useTabsStore((store) => store.panes);
+	const tabs = useTabsStore((store) => store.tabs);
 	const toolDisplayName = toolName
 		.replace("mastra_workspace_", "")
 		.replaceAll("_", " ");
-	const openFileInPane = useCallback(
+	const normalizeFilePath = useCallback(
 		(filePath: string) => {
-			if (!workspaceId) return;
 			const normalizedPath = normalizeWorkspaceFilePath({
 				filePath,
 				workspaceRoot: workspaceCwd,
 			});
+			return normalizedPath ?? null;
+		},
+		[workspaceCwd],
+	);
+	const openFileInPane = useCallback(
+		(filePath: string) => {
+			if (!workspaceId) return;
+			const normalizedPath = normalizeFilePath(filePath);
 			if (!normalizedPath) return;
 			addFileViewerPane(workspaceId, { filePath: normalizedPath });
+			posthog.capture("chat_file_opened_from_tool", {
+				workspace_id: workspaceId,
+				session_id: sessionId ?? null,
+				organization_id: organizationId ?? null,
+				tool_name: toolName,
+				open_target: "view",
+			});
 		},
-		[addFileViewerPane, workspaceCwd, workspaceId],
+		[
+			addFileViewerPane,
+			normalizeFilePath,
+			organizationId,
+			sessionId,
+			toolName,
+			workspaceId,
+		],
+	);
+	const workspaceDiffPaneByFilePath = useMemo(() => {
+		if (!workspaceId) return new Map<string, DiffPaneTarget>();
+
+		const workspaceTabIds = new Set(
+			tabs
+				.filter((tab) => tab.workspaceId === workspaceId)
+				.map((tab) => tab.id),
+		);
+		const diffPaneByFilePath = new Map<string, DiffPaneTarget>();
+
+		for (const pane of Object.values(panes)) {
+			if (pane?.type !== "file-viewer") continue;
+			if (!workspaceTabIds.has(pane.tabId)) continue;
+
+			const fileViewer = pane.fileViewer;
+			if (!fileViewer?.filePath || !fileViewer.diffCategory) continue;
+			if (diffPaneByFilePath.has(fileViewer.filePath)) continue;
+
+			diffPaneByFilePath.set(fileViewer.filePath, {
+				diffCategory: fileViewer.diffCategory,
+				commitHash: fileViewer.commitHash,
+				oldPath: fileViewer.oldPath,
+			});
+		}
+
+		return diffPaneByFilePath;
+	}, [panes, tabs, workspaceId]);
+	const getDiffPaneTargetForFile = useCallback(
+		(filePath: string) => {
+			const normalizedPath = normalizeFilePath(filePath);
+			if (!normalizedPath) return null;
+			return workspaceDiffPaneByFilePath.get(normalizedPath) ?? null;
+		},
+		[normalizeFilePath, workspaceDiffPaneByFilePath],
+	);
+	const openFileInDiffPane = useCallback(
+		(filePath: string) => {
+			if (!workspaceId) return;
+			const normalizedPath = normalizeFilePath(filePath);
+			const diffPaneTarget = getDiffPaneTargetForFile(filePath);
+			if (!normalizedPath) return;
+
+			addFileViewerPane(workspaceId, {
+				filePath: normalizedPath,
+				diffCategory: diffPaneTarget?.diffCategory ?? "unstaged",
+				commitHash: diffPaneTarget?.commitHash,
+				oldPath: diffPaneTarget?.oldPath,
+				viewMode: "diff",
+			});
+			posthog.capture("chat_file_opened_from_tool", {
+				workspace_id: workspaceId,
+				session_id: sessionId ?? null,
+				organization_id: organizationId ?? null,
+				tool_name: toolName,
+				open_target: "diff",
+			});
+		},
+		[
+			addFileViewerPane,
+			getDiffPaneTargetForFile,
+			normalizeFilePath,
+			organizationId,
+			sessionId,
+			toolName,
+			workspaceId,
+		],
 	);
 
 	const outputObject =
@@ -100,6 +210,47 @@ export function MastraToolCallBlock({
 		return firstText(...values) ?? "";
 	};
 
+	const deriveStringsFromStructuredPatch = (
+		hunks?: Array<{ lines: string[] }>,
+	): { oldString: string; newString: string } | undefined => {
+		if (!hunks?.length) return undefined;
+
+		const oldLines: string[] = [];
+		const newLines: string[] = [];
+
+		for (const hunk of hunks) {
+			for (const rawLine of hunk.lines) {
+				if (
+					rawLine.startsWith("@@") ||
+					rawLine.startsWith("\\ No newline at end of file")
+				) {
+					continue;
+				}
+
+				if (rawLine.startsWith("+")) {
+					newLines.push(rawLine.slice(1));
+					continue;
+				}
+
+				if (rawLine.startsWith("-")) {
+					oldLines.push(rawLine.slice(1));
+					continue;
+				}
+
+				const line = rawLine.startsWith(" ") ? rawLine.slice(1) : rawLine;
+				oldLines.push(line);
+				newLines.push(line);
+			}
+		}
+
+		if (oldLines.length === 0 && newLines.length === 0) return undefined;
+
+		return {
+			oldString: oldLines.join("\n"),
+			newString: newLines.join("\n"),
+		};
+	};
+
 	// --- Execute command → BashTool ---
 	if (toolName === "mastra_workspace_execute_command") {
 		const { command, stdout, stderr, exitCode } = getExecuteCommandViewModel({
@@ -135,7 +286,7 @@ export function MastraToolCallBlock({
 				filePath={filePath}
 				content={content}
 				isWriteMode
-				onFilePathClick={openFileInPane}
+				onFilePathClick={openFileInDiffPane}
 				renderExpandedContent={
 					content
 						? () => (
@@ -143,6 +294,7 @@ export function MastraToolCallBlock({
 									filePath={filePath}
 									oldString=""
 									newString={content}
+									hideUnchangedRegions={hideUnchangedRegions}
 								/>
 							)
 						: undefined
@@ -247,20 +399,25 @@ export function MastraToolCallBlock({
 				);
 			},
 		);
+		const derivedStrings = deriveStringsFromStructuredPatch(structuredPatch);
+		const expandedOldString = oldString || derivedStrings?.oldString || "";
+		const expandedNewString = newString || derivedStrings?.newString || "";
+
 		return (
 			<FileDiffTool
 				filePath={filePath}
 				oldString={oldString}
 				newString={newString}
 				structuredPatch={structuredPatch}
-				onFilePathClick={openFileInPane}
+				onFilePathClick={openFileInDiffPane}
 				renderExpandedContent={
-					oldString || newString
+					expandedOldString || expandedNewString
 						? () => (
 								<EditToolExpandedDiff
 									filePath={filePath}
-									oldString={oldString}
-									newString={newString}
+									oldString={expandedOldString}
+									newString={expandedNewString}
+									hideUnchangedRegions={hideUnchangedRegions}
 								/>
 							)
 						: undefined
@@ -301,23 +458,14 @@ export function MastraToolCallBlock({
 
 	// --- Ask user question → UserQuestionTool ---
 	if (toolName === "ask_user_question") {
-		const questions = Array.isArray(args.questions) ? args.questions : [];
-
-		if (part.state === "output-available" || part.state === "output-error") {
-			return (
-				<GenericToolCall
-					part={part}
-					toolName="Question"
-					icon={MessageCircleQuestionIcon}
-				/>
-			);
-		}
-
 		return (
-			<UserQuestionTool
-				questions={questions}
-				onAnswer={(answers) => onAnswer?.(part.toolCallId, answers)}
-				onSkip={() => onAnswer?.(part.toolCallId, {})}
+			<AskUserQuestionToolCall
+				part={part}
+				args={args}
+				result={result}
+				outputObject={outputObject}
+				nestedResultObject={nestedResultObject}
+				onAnswer={onAnswer}
 			/>
 		);
 	}
@@ -358,6 +506,10 @@ export function MastraToolCallBlock({
 
 	if (toolName === "submit_plan") {
 		return <GenericToolCall part={part} toolName="Submit plan" />;
+	}
+
+	if (toolName === "subagent") {
+		return <SubagentToolCall part={part} args={args} result={result} />;
 	}
 
 	// --- Fallback: generic tool UI ---

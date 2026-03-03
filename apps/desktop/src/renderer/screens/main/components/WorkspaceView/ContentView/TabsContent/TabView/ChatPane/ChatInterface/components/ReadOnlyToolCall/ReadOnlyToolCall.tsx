@@ -34,6 +34,41 @@ function stringify(value: unknown): string {
 	}
 }
 
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+	if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+		return value as Record<string, unknown>;
+	}
+	return undefined;
+}
+
+function toStringValue(value: unknown): string | undefined {
+	if (typeof value === "string") return value;
+	if (typeof value === "number" || typeof value === "boolean") {
+		return String(value);
+	}
+	return undefined;
+}
+
+function extractReadFileContent(output: unknown): string | undefined {
+	const direct = toStringValue(output);
+	if (direct) return direct;
+
+	const record = toRecord(output);
+	if (!record) return undefined;
+
+	const nestedResult = toRecord(record.result);
+
+	return (
+		toStringValue(record.content) ??
+		toStringValue(record.text) ??
+		toStringValue(record.stdout) ??
+		toStringValue(record.data) ??
+		toStringValue(nestedResult?.content) ??
+		toStringValue(nestedResult?.text) ??
+		toStringValue(nestedResult?.stdout)
+	);
+}
+
 interface ReadOnlyToolCallProps {
 	part: ToolPart;
 	onOpenFileInPane?: (filePath: string) => void;
@@ -56,6 +91,10 @@ export function ReadOnlyToolCall({
 	const isPending =
 		part.state !== "output-available" && part.state !== "output-error";
 	const displayState = toToolDisplayState(part);
+	const isReadFileTool = toolName === "mastra_workspace_read_file";
+	const readFileContent = isReadFileTool
+		? extractReadFileContent(output)
+		: undefined;
 	const hasDetails = part.input != null || output != null || isError;
 
 	let title = "Read file";
@@ -164,17 +203,25 @@ export function ReadOnlyToolCall({
 			</div>
 			{hasDetails && (
 				<CollapsibleContent className="data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 outline-none data-[state=closed]:animate-out data-[state=open]:animate-in">
-					<div className="mt-0.5">
-						{part.input != null && <ToolInput input={part.input} />}
-						{(output != null || isError) && (
-							<ToolOutput
-								output={!isError ? output : undefined}
-								errorText={
-									isError ? stringify(outputError ?? output) : undefined
-								}
-							/>
-						)}
-					</div>
+					{isReadFileTool && !isError && readFileContent ? (
+						<div className="mt-0.5 max-h-[300px] overflow-y-auto">
+							<pre className="whitespace-pre-wrap break-words px-2.5 py-2 font-mono text-xs text-foreground">
+								{readFileContent}
+							</pre>
+						</div>
+					) : (
+						<div className="mt-0.5">
+							{part.input != null && <ToolInput input={part.input} />}
+							{(output != null || isError) && (
+								<ToolOutput
+									output={!isError ? output : undefined}
+									errorText={
+										isError ? stringify(outputError ?? output) : undefined
+									}
+								/>
+							)}
+						</div>
+					)}
 				</CollapsibleContent>
 			)}
 		</Collapsible>

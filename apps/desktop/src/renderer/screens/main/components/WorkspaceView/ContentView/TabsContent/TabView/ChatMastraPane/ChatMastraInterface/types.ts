@@ -1,4 +1,5 @@
 import type { UseMastraChatDisplayReturn } from "@superset/chat-mastra/client";
+import type { StartFreshSessionResult } from "../../ChatPane/ChatInterface/types";
 
 export interface ChatMastraRawSnapshot {
 	sessionId: string | null;
@@ -11,10 +12,10 @@ export interface ChatMastraRawSnapshot {
 export interface ChatMastraInterfaceProps {
 	sessionId: string | null;
 	workspaceId: string;
+	organizationId: string | null;
 	cwd: string;
-	onStartFreshSession: () => Promise<{
-		created: boolean;
-		errorMessage?: string;
-	}>;
+	isSessionReady: boolean;
+	ensureSessionReady: () => Promise<boolean>;
+	onStartFreshSession: () => Promise<StartFreshSessionResult>;
 	onRawSnapshotChange?: (snapshot: ChatMastraRawSnapshot) => void;
 }

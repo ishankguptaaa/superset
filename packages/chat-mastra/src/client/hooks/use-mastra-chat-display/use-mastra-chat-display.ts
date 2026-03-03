@@ -12,6 +12,8 @@ type SessionOutputs = RouterOutputs["session"];
 
 type DisplayStateOutput = SessionOutputs["getDisplayState"];
 type ListMessagesOutput = SessionOutputs["listMessages"];
+type HistoryMessage = ListMessagesOutput[number];
+type HistoryMessagePart = HistoryMessage["content"][number];
 
 export type MastraChatDisplayState = DisplayStateOutput;
 export type MastraChatHistoryMessages = ListMessagesOutput;
@@ -35,6 +37,30 @@ function findLastUserMessageIndex(messages: ListMessagesOutput): number {
 	return -1;
 }
 
+export function findLatestAssistantErrorMessage(
+	messages: ListMessagesOutput,
+): string | null {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index] as {
+			role?: string;
+			stopReason?: string;
+			errorMessage?: string;
+		};
+		if (message.role !== "assistant") continue;
+		if (message.stopReason !== undefined && message.stopReason !== "error") {
+			return null;
+		}
+		if (
+			typeof message.errorMessage === "string" &&
+			message.errorMessage.trim().length > 0
+		) {
+			return message.errorMessage.trim();
+		}
+		return null;
+	}
+	return null;
+}
+
 export function withoutActiveTurnAssistantHistory({
 	messages,
 	currentMessage,
@@ -52,7 +78,7 @@ export function withoutActiveTurnAssistantHistory({
 	const previousTurns = messages.slice(0, turnStartIndex);
 	const activeTurnNonAssistant = messages
 		.slice(turnStartIndex)
-		.filter((message) => message.role !== "assistant");
+		.filter((message: HistoryMessage) => message.role !== "assistant");
 
 	return [...previousTurns, ...activeTurnNonAssistant];
 }
@@ -87,9 +113,17 @@ export function useMastraChatDisplay(options: UseMastraChatDisplayOptions) {
 	);
 
 	const displayState = displayQuery.data ?? null;
+	const runtimeErrorMessage =
+		typeof displayState?.errorMessage === "string" &&
+		displayState.errorMessage.trim()
+			? displayState.errorMessage
+			: null;
 	const currentMessage = displayState?.currentMessage ?? null;
 	const isRunning = displayState?.isRunning ?? false;
 	const historicalMessages = messagesQuery.data ?? [];
+	const latestAssistantErrorMessage = isRunning
+		? null
+		: findLatestAssistantErrorMessage(historicalMessages);
 	const [optimisticUserMessage, setOptimisticUserMessage] = useState<
 		ListMessagesOutput[number] | null
 	>(null);
@@ -100,10 +134,10 @@ export function useMastraChatDisplay(options: UseMastraChatDisplayOptions) {
 		if (!optimisticText) return;
 
 		const found = historicalMessages.some(
-			(message) =>
+			(message: HistoryMessage) =>
 				message.role === "user" &&
 				message.content.some(
-					(part) =>
+					(part: HistoryMessagePart) =>
 						part.type === "text" &&
 						"text" in part &&
 						part.text === optimisticText,
@@ -131,7 +165,13 @@ export function useMastraChatDisplay(options: UseMastraChatDisplayOptions) {
 			sendMessage: async (
 				input: Omit<SessionInputs["sendMessage"], "sessionId">,
 			) => {
-				if (!sessionId) return;
+				if (!sessionId) {
+					const error = new Error(
+						"Chat session is still starting. Please retry in a moment.",
+					);
+					setCommandError(error);
+					throw error;
+				}
 				setCommandError(null);
 
 				const text =
@@ -158,7 +198,7 @@ export function useMastraChatDisplay(options: UseMastraChatDisplayOptions) {
 					setCommandError(error);
 					setOptimisticUserMessage(null);
 					optimisticTextRef.current = null;
-					return;
+					throw error;
 				}
 			},
 			stop: async () => {
@@ -233,7 +273,13 @@ export function useMastraChatDisplay(options: UseMastraChatDisplayOptions) {
 	return {
 		...displayState,
 		messages,
-		error: displayQuery.error ?? messagesQuery.error ?? commandError ?? null,
+		error:
+			runtimeErrorMessage ??
+			latestAssistantErrorMessage ??
+			displayQuery.error ??
+			messagesQuery.error ??
+			commandError ??
+			null,
 		commands,
 	};
 }

@@ -2,7 +2,7 @@
 	"name": "@superset/desktop",
 	"productName": "Superset",
 	"description": "The last developer tool you'll ever need",
-	"version": "0.0.88",
+	"version": "1.0.4",
 	"main": "./dist/main/index.js",
 	"resources": "src/resources",
 	"repository": {
@@ -168,6 +168,7 @@
 		"rehype-sanitize": "^6.0.0",
 		"remark-gfm": "^4.0.1",
 		"semver": "^7.7.3",
+		"shell-env": "^4.0.3",
 		"shell-quote": "^1.8.3",
 		"simple-git": "^3.30.0",
 		"streamdown": "^2.2.0",

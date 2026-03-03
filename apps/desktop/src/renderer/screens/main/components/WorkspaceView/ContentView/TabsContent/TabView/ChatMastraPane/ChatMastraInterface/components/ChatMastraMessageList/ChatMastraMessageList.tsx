@@ -14,6 +14,10 @@ import type { ToolPart } from "../../../../ChatPane/ChatInterface/utils/tool-hel
 import { normalizeToolName } from "../../../../ChatPane/ChatInterface/utils/tool-helpers";
 import { AssistantMessage } from "./components/AssistantMessage";
 import { MessageScrollbackRail } from "./components/MessageScrollbackRail";
+import { PendingApprovalMessage } from "./components/PendingApprovalMessage";
+import { PendingPlanApprovalMessage } from "./components/PendingPlanApprovalMessage";
+import { PendingQuestionMessage } from "./components/PendingQuestionMessage";
+import { SubagentExecutionMessage } from "./components/SubagentExecutionMessage";
 import { UserMessage } from "./components/UserMessage";
 
 type MastraMessage = NonNullable<
@@ -23,21 +27,53 @@ type MastraActiveTools = NonNullable<UseMastraChatDisplayReturn["activeTools"]>;
 type MastraToolInputBuffers = NonNullable<
 	UseMastraChatDisplayReturn["toolInputBuffers"]
 >;
+type MastraActiveSubagents = NonNullable<
+	UseMastraChatDisplayReturn["activeSubagents"]
+>;
 type MastraActiveTool =
 	MastraActiveTools extends Map<string, infer ToolState> ? ToolState : never;
 type MastraToolInputBuffer =
 	MastraToolInputBuffers extends Map<string, infer InputBuffer>
 		? InputBuffer
 		: never;
+type MastraPendingApproval = UseMastraChatDisplayReturn["pendingApproval"];
+type MastraPendingPlanApproval =
+	UseMastraChatDisplayReturn["pendingPlanApproval"];
+type MastraPendingQuestion = UseMastraChatDisplayReturn["pendingQuestion"];
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	if (typeof value === "object" && value !== null) {
+		return value as Record<string, unknown>;
+	}
+	return null;
+}
 
 interface ChatMastraMessageListProps {
 	messages: MastraMessage[];
 	isRunning: boolean;
+	isAwaitingAssistant: boolean;
 	currentMessage: MastraMessage | null;
 	workspaceId: string;
+	sessionId: string | null;
+	organizationId: string | null;
 	workspaceCwd?: string;
 	activeTools: MastraActiveTools | undefined;
 	toolInputBuffers: MastraToolInputBuffers | undefined;
+	activeSubagents: MastraActiveSubagents | undefined;
+	pendingApproval: MastraPendingApproval;
+	isApprovalSubmitting: boolean;
+	onApprovalRespond: (
+		decision: "approve" | "decline" | "always_allow_category",
+	) => Promise<void>;
+	pendingPlanApproval: MastraPendingPlanApproval;
+	isPlanSubmitting: boolean;
+	onPlanRespond: (response: {
+		action: "approved" | "rejected";
+		feedback?: string;
+	}) => Promise<void>;
+	pendingQuestion: MastraPendingQuestion;
+	isQuestionSubmitting: boolean;
+	onQuestionRespond: (questionId: string, answer: string) => Promise<void>;
 }
 
 function toPreviewToolPart({
@@ -49,19 +85,22 @@ function toPreviewToolPart({
 	toolState: MastraActiveTool | null;
 	inputBuffer: MastraToolInputBuffer | null;
 }): ToolPart {
+	const toolStateRecord = asRecord(toolState);
+	const inputBufferRecord = asRecord(inputBuffer);
 	const name =
-		(toolState && "name" in toolState ? toolState.name : undefined) ??
-		(inputBuffer && "toolName" in inputBuffer
-			? inputBuffer.toolName
+		(typeof toolStateRecord?.name === "string"
+			? toolStateRecord.name
+			: undefined) ??
+		(typeof inputBufferRecord?.toolName === "string"
+			? inputBufferRecord.toolName
 			: undefined) ??
 		"unknown_tool";
 	const status =
-		toolState && "status" in toolState ? toolState.status : "streaming_input";
+		typeof toolStateRecord?.status === "string"
+			? toolStateRecord.status
+			: "streaming_input";
 	const isError =
-		toolState &&
-		"isError" in toolState &&
-		typeof toolState.isError === "boolean" &&
-		toolState.isError;
+		typeof toolStateRecord?.isError === "boolean" && toolStateRecord.isError;
 	const state: ToolPart["state"] =
 		status === "error" || isError
 			? "output-error"
@@ -70,15 +109,8 @@ function toPreviewToolPart({
 				: status === "streaming_input"
 					? "input-streaming"
 					: "input-available";
-	const input =
-		(toolState && "args" in toolState ? toolState.args : undefined) ??
-		(inputBuffer && "text" in inputBuffer ? inputBuffer.text : undefined) ??
-		{};
-	const output =
-		(toolState && "result" in toolState ? toolState.result : undefined) ??
-		(toolState && "partialResult" in toolState
-			? toolState.partialResult
-			: undefined);
+	const input = toolStateRecord?.args ?? inputBufferRecord?.text ?? {};
+	const output = toolStateRecord?.result ?? toolStateRecord?.partialResult;
 
 	return {
 		type: `tool-${normalizeToolName(name)}` as ToolPart["type"],
@@ -131,11 +163,24 @@ function getStreamingPreviewToolParts({
 export function ChatMastraMessageList({
 	messages,
 	isRunning,
+	isAwaitingAssistant,
 	currentMessage,
 	workspaceId,
+	sessionId,
+	organizationId,
 	workspaceCwd,
 	activeTools,
 	toolInputBuffers,
+	activeSubagents,
+	pendingApproval,
+	isApprovalSubmitting,
+	onApprovalRespond,
+	pendingPlanApproval,
+	isPlanSubmitting,
+	onPlanRespond,
+	pendingQuestion,
+	isQuestionSubmitting,
+	onQuestionRespond,
 }: ChatMastraMessageListProps) {
 	const visibleMessages = useMemo(() => {
 		if (!isRunning || !currentMessage || currentMessage.role !== "assistant") {
@@ -157,6 +202,27 @@ export function ChatMastraMessageList({
 			}),
 		[activeTools, toolInputBuffers],
 	);
+	const activeSubagentEntries = useMemo(
+		() => toToolEntries(activeSubagents),
+		[activeSubagents],
+	);
+	const hasSubagentActivity = activeSubagentEntries.length > 0;
+	const shouldShowThinking =
+		isAwaitingAssistant &&
+		!currentMessage &&
+		!hasSubagentActivity &&
+		!pendingApproval &&
+		!pendingPlanApproval &&
+		!pendingQuestion &&
+		previewToolParts.length === 0;
+	const shouldShowToolPreview =
+		isAwaitingAssistant &&
+		!currentMessage &&
+		!hasSubagentActivity &&
+		!pendingApproval &&
+		!pendingPlanApproval &&
+		!pendingQuestion &&
+		previewToolParts.length > 0;
 
 	return (
 		<Conversation className="flex-1">
@@ -184,6 +250,8 @@ export function ChatMastraMessageList({
 								key={message.id}
 								message={message}
 								workspaceId={workspaceId}
+								sessionId={sessionId}
+								organizationId={organizationId}
 								workspaceCwd={workspaceCwd}
 								isStreaming={false}
 								previewToolParts={[]}
@@ -196,40 +264,62 @@ export function ChatMastraMessageList({
 						key={`current-${currentMessage.id}`}
 						message={currentMessage}
 						workspaceId={workspaceId}
+						sessionId={sessionId}
+						organizationId={organizationId}
 						workspaceCwd={workspaceCwd}
 						isStreaming
 						previewToolParts={previewToolParts}
 					/>
 				)}
-				{isRunning &&
-					!currentMessage &&
-					visibleMessages[visibleMessages.length - 1]?.role === "user" &&
-					previewToolParts.length === 0 && (
-						<Message from="assistant">
-							<MessageContent>
-								<ShimmerLabel className="text-sm text-muted-foreground">
-									Thinking...
-								</ShimmerLabel>
-							</MessageContent>
-						</Message>
-					)}
-				{isRunning &&
-					!currentMessage &&
-					visibleMessages[visibleMessages.length - 1]?.role === "user" &&
-					previewToolParts.length > 0 && (
-						<Message from="assistant">
-							<MessageContent>
-								{previewToolParts.map((part) => (
-									<MastraToolCallBlock
-										key={`tool-preview-${part.toolCallId}`}
-										part={part}
-										workspaceId={workspaceId}
-										workspaceCwd={workspaceCwd}
-									/>
-								))}
-							</MessageContent>
-						</Message>
-					)}
+				{shouldShowThinking && (
+					<Message from="assistant">
+						<MessageContent>
+							<ShimmerLabel className="text-sm text-muted-foreground">
+								Thinking...
+							</ShimmerLabel>
+						</MessageContent>
+					</Message>
+				)}
+				{shouldShowToolPreview && (
+					<Message from="assistant">
+						<MessageContent>
+							{previewToolParts.map((part) => (
+								<MastraToolCallBlock
+									key={`tool-preview-${part.toolCallId}`}
+									part={part}
+									workspaceId={workspaceId}
+									sessionId={sessionId}
+									organizationId={organizationId}
+									workspaceCwd={workspaceCwd}
+								/>
+							))}
+						</MessageContent>
+					</Message>
+				)}
+				{hasSubagentActivity && (
+					<SubagentExecutionMessage subagents={activeSubagentEntries} />
+				)}
+				{pendingApproval && (
+					<PendingApprovalMessage
+						approval={pendingApproval}
+						isSubmitting={isApprovalSubmitting}
+						onRespond={onApprovalRespond}
+					/>
+				)}
+				{pendingPlanApproval && (
+					<PendingPlanApprovalMessage
+						planApproval={pendingPlanApproval}
+						isSubmitting={isPlanSubmitting}
+						onRespond={onPlanRespond}
+					/>
+				)}
+				{pendingQuestion && (
+					<PendingQuestionMessage
+						question={pendingQuestion}
+						isSubmitting={isQuestionSubmitting}
+						onRespond={onQuestionRespond}
+					/>
+				)}
 			</ConversationContent>
 			<MessageScrollbackRail messages={visibleMessages} />
 			<ConversationScrollButton />

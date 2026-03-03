@@ -20,6 +20,8 @@ interface AssistantMessageProps {
 	message: MastraMessage;
 	isStreaming: boolean;
 	workspaceId: string;
+	sessionId?: string | null;
+	organizationId?: string | null;
 	workspaceCwd?: string;
 	previewToolParts?: ToolPart[];
 }
@@ -90,6 +92,8 @@ export function AssistantMessage({
 	message,
 	isStreaming,
 	workspaceId,
+	sessionId,
+	organizationId,
 	workspaceCwd,
 	previewToolParts = [],
 }: AssistantMessageProps) {
@@ -134,6 +138,9 @@ export function AssistantMessage({
 		}
 
 		if (part.type === "tool_call") {
+			if (renderedToolCallIds.has(part.id)) {
+				continue;
+			}
 			renderedToolCallIds.add(part.id);
 			const { result, index: resultIndex } = findToolResultForCall({
 				content: message.content,
@@ -150,6 +157,8 @@ export function AssistantMessage({
 						isStreaming,
 					})}
 					workspaceId={workspaceId}
+					sessionId={sessionId}
+					organizationId={organizationId}
 					workspaceCwd={workspaceCwd}
 				/>,
 			);
@@ -161,12 +170,17 @@ export function AssistantMessage({
 		}
 
 		if (part.type === "tool_result") {
+			if (renderedToolCallIds.has(part.id)) {
+				continue;
+			}
 			renderedToolCallIds.add(part.id);
 			nodes.push(
 				<MastraToolCallBlock
 					key={`${message.id}-tool-result-${part.id}`}
 					part={toToolPartFromResult(part)}
 					workspaceId={workspaceId}
+					sessionId={sessionId}
+					organizationId={organizationId}
 					workspaceCwd={workspaceCwd}
 				/>,
 			);
@@ -193,6 +207,8 @@ export function AssistantMessage({
 				key={`${message.id}-tool-preview-${previewPart.toolCallId}`}
 				part={previewPart}
 				workspaceId={workspaceId}
+				sessionId={sessionId}
+				organizationId={organizationId}
 				workspaceCwd={workspaceCwd}
 			/>,
 		);
