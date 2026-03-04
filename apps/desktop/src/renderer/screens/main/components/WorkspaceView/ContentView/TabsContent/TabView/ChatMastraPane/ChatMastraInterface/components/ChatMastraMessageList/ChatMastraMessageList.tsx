@@ -2,6 +2,7 @@ import {
 	Conversation,
 	ConversationContent,
 	ConversationEmptyState,
+	ConversationLoadingState,
 	ConversationScrollButton,
 } from "@superset/ui/ai-elements/conversation";
 import { useMemo, useRef } from "react";
@@ -34,6 +35,7 @@ export function ChatMastraMessageList({
 	messages,
 	isFocused,
 	isRunning,
+	isConversationLoading,
 	isAwaitingAssistant,
 	currentMessage,
 	interruptedMessage,
@@ -129,6 +131,13 @@ export function ChatMastraMessageList({
 	const shouldShowToolPreview =
 		canShowPendingAssistantUi && previewToolParts.length > 0;
 
+	const hasConversationContent =
+		renderedMessages.length > 0 || Boolean(interruptedPreview);
+	const shouldShowConversationLoading =
+		isConversationLoading && !isAwaitingAssistant && !hasConversationContent;
+	const shouldShowEmptyState =
+		!shouldShowConversationLoading && !hasConversationContent;
+
 	const inlineToolStateProps = {
 		pendingPlanApproval,
 		pendingPlanToolCallId,
@@ -140,7 +149,9 @@ export function ChatMastraMessageList({
 		<Conversation className="flex-1">
 			<ConversationContent className="mx-auto w-full max-w-3xl py-6 pl-6 pr-16">
 				<div ref={messageListRef} className="flex flex-col gap-6">
-					{renderedMessages.length === 0 && !interruptedPreview ? (
+					{shouldShowConversationLoading ? (
+						<ConversationLoadingState />
+					) : shouldShowEmptyState ? (
 						<ConversationEmptyState
 							title="Start a conversation"
 							description="Ask anything to get started"

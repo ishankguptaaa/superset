@@ -48,6 +48,7 @@ export interface ChatMastraMessageListProps {
 	messages: MastraMessage[];
 	isFocused: boolean;
 	isRunning: boolean;
+	isConversationLoading: boolean;
 	isAwaitingAssistant: boolean;
 	currentMessage: MastraMessage | null;
 	interruptedMessage: InterruptedMessagePreview | null;
