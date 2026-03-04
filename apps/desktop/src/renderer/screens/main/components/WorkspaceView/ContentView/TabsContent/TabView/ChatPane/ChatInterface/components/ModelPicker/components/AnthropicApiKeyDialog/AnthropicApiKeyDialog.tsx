@@ -85,7 +85,11 @@ export function AnthropicApiKeyDialog({
 							Clear settings
 						</Button>
 					) : null}
-					<Button type="button" onClick={onSubmit} disabled={isPending}>
+					<Button
+						type="button"
+						onClick={onSubmit}
+						disabled={isPending || envText.trim().length === 0}
+					>
 						{isPending ? "Saving..." : "Save settings"}
 					</Button>
 				</DialogFooter>

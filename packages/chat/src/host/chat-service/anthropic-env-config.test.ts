@@ -20,16 +20,14 @@ const MANAGED_ENV_KEYS = [
 	"AWS_PROFILE",
 	"OPENAI_API_KEY",
 ] as const;
-const originalEnvValues = {
-	ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL,
-	ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-	ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN,
-};
+const originalEnvValues = Object.fromEntries(
+	MANAGED_ENV_KEYS.map((key) => [key, process.env[key]]),
+) as Record<(typeof MANAGED_ENV_KEYS)[number], string | undefined>;
 
 afterEach(() => {
 	for (const key of MANAGED_ENV_KEYS) {
 		const value = originalEnvValues[key];
-		if (value) {
+		if (value !== undefined) {
 			process.env[key] = value;
 		} else {
 			delete process.env[key];

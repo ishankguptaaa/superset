@@ -48,12 +48,9 @@ export function useAnthropicApiKey({
 		chatServiceTrpc.auth.setAnthropicEnvConfig.useMutation();
 	const clearAnthropicEnvConfigMutation =
 		chatServiceTrpc.auth.clearAnthropicEnvConfig.useMutation();
-	const clearAnthropicApiKeyMutation =
-		chatServiceTrpc.auth.clearAnthropicApiKey.useMutation();
 	const isPending =
 		setAnthropicApiKeyMutation.isPending ||
-		clearAnthropicEnvConfigMutation.isPending ||
-		clearAnthropicApiKeyMutation.isPending;
+		clearAnthropicEnvConfigMutation.isPending;
 
 	useEffect(() => {
 		if (!isModelSelectorOpen) return;
@@ -99,10 +96,7 @@ export function useAnthropicApiKey({
 	const clearApiKey = useCallback(async () => {
 		setErrorMessage(null);
 		try {
-			await Promise.all([
-				clearAnthropicApiKeyMutation.mutateAsync(),
-				clearAnthropicEnvConfigMutation.mutateAsync(),
-			]);
+			await clearAnthropicEnvConfigMutation.mutateAsync();
 			await Promise.all([
 				refetchAnthropicStatus(),
 				refetchAnthropicEnvConfig(),
@@ -114,7 +108,6 @@ export function useAnthropicApiKey({
 			);
 		}
 	}, [
-		clearAnthropicApiKeyMutation,
 		clearAnthropicEnvConfigMutation,
 		closeDialog,
 		refetchAnthropicEnvConfig,

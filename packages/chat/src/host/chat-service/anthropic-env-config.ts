@@ -52,14 +52,15 @@ function normalizeAnthropicBaseUrl(
 		const parsed = new URL(baseUrl);
 		const normalizedHost = parsed.hostname.toLowerCase();
 		const pathname = parsed.pathname.replace(/\/+$/, "");
-		if (
-			normalizedHost === "ai-gateway.vercel.sh" &&
-			(pathname.length === 0 || pathname === "/")
-		) {
+		if (normalizedHost === "ai-gateway.vercel.sh" && pathname.length === 0) {
 			parsed.pathname = "/v1";
 		}
 		return parsed.toString().replace(/\/$/, "");
-	} catch {
+	} catch (error) {
+		console.warn(
+			"[chat-service][anthropic-env] Invalid ANTHROPIC_BASE_URL; using raw value.",
+			{ error: error instanceof Error ? error.message : String(error) },
+		);
 		return baseUrl;
 	}
 }
@@ -143,7 +144,14 @@ function readPersistedAnthropicEnvConfig(
 			version: 1,
 			envText: parsed.envText,
 		};
-	} catch {
+	} catch (error) {
+		console.warn(
+			"[chat-service][anthropic-env] Failed to read persisted env config.",
+			{
+				configPath,
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
 		return null;
 	}
 }
@@ -167,7 +175,14 @@ export function getAnthropicEnvConfig(
 			envText: persisted.envText,
 			variables: parseAnthropicEnvText(persisted.envText),
 		};
-	} catch {
+	} catch (error) {
+		console.warn(
+			"[chat-service][anthropic-env] Persisted env config is invalid and will be ignored.",
+			{
+				configPath: getAnthropicEnvConfigPath(options),
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
 		return {
 			envText: "",
 			variables: {},
@@ -197,8 +212,7 @@ export function clearAnthropicEnvConfig(
 	options?: AnthropicEnvConfigDiskOptions,
 ): void {
 	const configPath = getAnthropicEnvConfigPath(options);
-	if (!existsSync(configPath)) return;
-	rmSync(configPath);
+	rmSync(configPath, { force: true });
 }
 
 export function buildAnthropicRuntimeEnv(

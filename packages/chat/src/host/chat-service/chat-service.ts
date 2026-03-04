@@ -160,8 +160,6 @@ export class ChatService {
 		envText: string;
 	}): Promise<{ success: true }> {
 		const configVariables = parseAnthropicEnvText(input.envText);
-		this.clearStoredAnthropicOAuthCredential();
-		this.setStoredAnthropicApiKeyFromEnvVariables(configVariables);
 
 		setAnthropicEnvConfigOnDisk(
 			{
@@ -171,6 +169,8 @@ export class ChatService {
 				configPath: this.anthropicEnvConfigPath,
 			},
 		);
+		this.clearStoredAnthropicOAuthCredential();
+		this.setStoredAnthropicApiKeyFromEnvVariables(configVariables);
 		this.applyAnthropicRuntimeEnv(configVariables);
 		return { success: true };
 	}
