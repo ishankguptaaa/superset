@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { projects, worktrees } from "@superset/local-db";
 import { eq } from "drizzle-orm";
 import { localDb } from "main/lib/local-db";
@@ -44,6 +45,12 @@ export async function tryRepairWorktreePath(
 		});
 
 		if (!actualPath || !existsSync(actualPath)) return null;
+
+		// Reject if the candidate resolves to the main repo path.
+		// `git worktree list` includes the main worktree; if the branch
+		// happens to be checked out there, we must not rebind this
+		// worktree row to the main repo.
+		if (resolve(actualPath) === resolve(project.mainRepoPath)) return null;
 
 		// Path has changed - update the database
 		if (actualPath !== worktree.path) {
