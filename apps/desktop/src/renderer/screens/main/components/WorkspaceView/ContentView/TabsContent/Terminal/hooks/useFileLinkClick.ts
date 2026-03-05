@@ -59,7 +59,6 @@ export function useFileLinkClick({
 
 			if (behavior === "file-viewer") {
 				// If workspaceCwd is not loaded yet, fall back to external editor
-				// This prevents confusing errors when the workspace is still initializing
 				if (!workspaceCwd) {
 					console.warn(
 						"[Terminal] workspaceCwd not loaded, falling back to external editor",
@@ -68,18 +67,10 @@ export function useFileLinkClick({
 					return;
 				}
 
-				// Normalize absolute paths to worktree-relative paths for file viewer
-				// File viewer expects relative paths, but terminal links can be absolute
-				let filePath = path;
-				// Use path boundary check to avoid incorrect prefix stripping
-				// e.g., /repo vs /repo-other should not match
-				if (path === workspaceCwd) {
-					filePath = ".";
-				} else if (path.startsWith(`${workspaceCwd}/`)) {
-					filePath = path.slice(workspaceCwd.length + 1);
-				}
-				// Absolute paths outside workspace are passed through as-is.
-				// The file viewer supports loading external files via absolute paths.
+				// Resolve relative paths to absolute using workspace cwd
+				const filePath = path.startsWith("/")
+					? path
+					: `${workspaceCwd}/${path}`;
 				addFileViewerPane(workspaceId, {
 					filePath,
 					line,

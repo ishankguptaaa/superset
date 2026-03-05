@@ -5,6 +5,7 @@ import { isImageFile } from "shared/file-types";
 
 interface UseFileContentParams {
 	worktreePath: string;
+	/** Absolute file path (or remote URL) */
 	filePath: string;
 	viewMode: "raw" | "diff" | "rendered";
 	diffCategory?: ChangeCategory;
@@ -13,6 +14,21 @@ interface UseFileContentParams {
 	isDirty: boolean;
 	originalContentRef: React.MutableRefObject<string>;
 	originalDiffContentRef: React.MutableRefObject<string>;
+}
+
+/**
+ * Derives a worktree-relative path from an absolute path.
+ * Returns null if the path is not inside the worktree.
+ */
+function toRelativePath(
+	absolutePath: string,
+	worktreePath: string,
+): string | null {
+	if (absolutePath === worktreePath) return ".";
+	if (absolutePath.startsWith(`${worktreePath}/`)) {
+		return absolutePath.slice(worktreePath.length + 1);
+	}
+	return null;
 }
 
 export function useFileContent({
@@ -30,15 +46,21 @@ export function useFileContent({
 	const isRemote =
 		filePath.startsWith("https://") || filePath.startsWith("http://");
 
-	// Absolute paths (starting with /) are external files outside the worktree
-	const isAbsolutePath = filePath.startsWith("/");
+	// Derive worktree-relative path for git-aware operations (secureFs)
+	const relativePath = useMemo(
+		() => (worktreePath ? toRelativePath(filePath, worktreePath) : null),
+		[filePath, worktreePath],
+	);
+
+	// File is inside the worktree if we can derive a relative path
+	const isInsideWorktree = relativePath !== null;
 
 	const { data: branchData } = electronTrpc.changes.getBranches.useQuery(
 		{ worktreePath },
 		{
 			enabled:
 				!isRemote &&
-				!isAbsolutePath &&
+				isInsideWorktree &&
 				!!worktreePath &&
 				diffCategory === "against-base",
 		},
@@ -48,14 +70,14 @@ export function useFileContent({
 
 	const isImage = isImageFile(filePath);
 
-	// Use filesystem.readFile for absolute paths (external files)
+	// Use filesystem.readFile for files outside the worktree (absolute paths)
 	const { data: externalFileData, isLoading: isLoadingExternal } =
 		electronTrpc.filesystem.readFile.useQuery(
 			{ filePath },
 			{
 				enabled:
-					isAbsolutePath &&
 					!isRemote &&
+					!isInsideWorktree &&
 					viewMode !== "diff" &&
 					!isImage &&
 					!!filePath,
@@ -65,34 +87,36 @@ export function useFileContent({
 	// Use changes.readWorkingFile for worktree-relative paths
 	const { data: rawFileData, isLoading: isLoadingRaw } =
 		electronTrpc.changes.readWorkingFile.useQuery(
-			{ worktreePath, filePath },
+			{ worktreePath, filePath: relativePath ?? "" },
 			{
 				enabled:
 					!isRemote &&
-					!isAbsolutePath &&
+					isInsideWorktree &&
 					viewMode !== "diff" &&
 					!isImage &&
-					!!filePath &&
+					!!relativePath &&
 					!!worktreePath,
 			},
 		);
 
 	// Merge external and worktree file data into a single result
-	const effectiveRawFileData = isAbsolutePath ? externalFileData : rawFileData;
-	const effectiveIsLoadingRaw = isAbsolutePath
-		? isLoadingExternal
-		: isLoadingRaw;
+	const effectiveRawFileData = isInsideWorktree
+		? rawFileData
+		: externalFileData;
+	const effectiveIsLoadingRaw = isInsideWorktree
+		? isLoadingRaw
+		: isLoadingExternal;
 
 	const { data: imageData, isLoading: isLoadingImage } =
 		electronTrpc.changes.readWorkingFileImage.useQuery(
-			{ worktreePath, filePath },
+			{ worktreePath, filePath: relativePath ?? "" },
 			{
 				enabled:
 					!isRemote &&
-					!isAbsolutePath &&
+					isInsideWorktree &&
 					viewMode === "rendered" &&
 					isImage &&
-					!!filePath &&
+					!!relativePath &&
 					!!worktreePath,
 			},
 		);
@@ -101,7 +125,7 @@ export function useFileContent({
 		electronTrpc.changes.getFileContents.useQuery(
 			{
 				worktreePath,
-				filePath,
+				filePath: relativePath ?? "",
 				oldPath,
 				category: diffCategory ?? "unstaged",
 				commitHash,
@@ -111,10 +135,10 @@ export function useFileContent({
 			{
 				enabled:
 					!isRemote &&
-					!isAbsolutePath &&
+					isInsideWorktree &&
 					viewMode === "diff" &&
 					!!diffCategory &&
-					!!filePath &&
+					!!relativePath &&
 					!!worktreePath,
 			},
 		);

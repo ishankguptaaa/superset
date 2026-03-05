@@ -184,14 +184,9 @@ export function FilesView() {
 	const handleFileActivate = useCallback(
 		(entry: DirectoryEntry) => {
 			if (!workspaceId || !worktreePath || entry.isDirectory) return;
-			// When browsing outside the worktree, use the absolute path
-			const filePath =
-				isOutsideWorktree || entry.relativePath.startsWith("..")
-					? entry.path
-					: entry.relativePath;
-			addFileViewerPane(workspaceId, { filePath });
+			addFileViewerPane(workspaceId, { filePath: entry.path });
 		},
-		[workspaceId, worktreePath, isOutsideWorktree, addFileViewerPane],
+		[workspaceId, worktreePath, addFileViewerPane],
 	);
 
 	const handleOpenInEditor = useCallback(

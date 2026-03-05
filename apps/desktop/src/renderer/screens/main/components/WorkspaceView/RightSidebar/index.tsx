@@ -105,22 +105,22 @@ export function RightSidebar() {
 	const { scrollToFile } = useScrollContext();
 
 	const invalidateFileContent = useCallback(
-		(filePath: string) => {
+		(relativeFilePath: string) => {
 			if (!worktreePath) return;
 
 			Promise.all([
 				trpcUtils.changes.readWorkingFile.invalidate({
 					worktreePath,
-					filePath,
+					filePath: relativeFilePath,
 				}),
 				trpcUtils.changes.getFileContents.invalidate({
 					worktreePath,
-					filePath,
+					filePath: relativeFilePath,
 				}),
 			]).catch((error) => {
 				console.error(
 					"[RightSidebar/invalidateFileContent] Failed to invalidate file content queries:",
-					{ worktreePath, filePath, error },
+					{ worktreePath, filePath: relativeFilePath, error },
 				);
 			});
 		},
@@ -130,8 +130,11 @@ export function RightSidebar() {
 	const handleFileOpenPane = useCallback(
 		(file: ChangedFile, category: ChangeCategory, commitHash?: string) => {
 			if (!workspaceId || !worktreePath) return;
+			const absolutePath = file.path.startsWith("/")
+				? file.path
+				: `${worktreePath}/${file.path}`;
 			addFileViewerPane(workspaceId, {
-				filePath: file.path,
+				filePath: absolutePath,
 				diffCategory: category,
 				fileStatus: file.status,
 				commitHash,

@@ -61,6 +61,62 @@ export function normalizeWorkspaceFilePath({
 	return normalizedPath;
 }
 
+/**
+ * Resolves a file path to an absolute path given a workspace root.
+ * Handles file:// URIs, relative paths, and already-absolute paths.
+ * Returns null if the path is empty or resolves to the workspace root itself.
+ */
+export function resolveToAbsolutePath({
+	filePath,
+	workspaceRoot,
+}: {
+	filePath: string;
+	workspaceRoot?: string;
+}): string | null {
+	let normalizedPath = filePath.trim();
+	if (!normalizedPath) return null;
+
+	if (normalizedPath.startsWith("file://")) {
+		const rawPath = normalizedPath.slice(7);
+		try {
+			normalizedPath = decodeURIComponent(rawPath);
+		} catch {
+			normalizedPath = rawPath;
+		}
+	}
+
+	normalizedPath = normalizedPath.replaceAll("\\", "/");
+
+	// Already absolute
+	if (normalizedPath.startsWith("/")) {
+		return normalizedPath;
+	}
+
+	// Remote URL — pass through
+	if (
+		normalizedPath.startsWith("https://") ||
+		normalizedPath.startsWith("http://")
+	) {
+		return normalizedPath;
+	}
+
+	// Relative path — resolve against workspace root
+	const normalizedRoot = workspaceRoot
+		? workspaceRoot.replaceAll("\\", "/").replace(/\/+$/, "")
+		: "";
+
+	if (!normalizedRoot) return null;
+
+	// Strip leading ./
+	while (normalizedPath.startsWith("./")) {
+		normalizedPath = normalizedPath.slice(2);
+	}
+
+	if (!normalizedPath || normalizedPath === ".") return null;
+
+	return `${normalizedRoot}/${normalizedPath}`;
+}
+
 function toStringValue(value: unknown): string | null {
 	if (typeof value !== "string") return null;
 	const trimmed = value.trim();
