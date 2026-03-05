@@ -84,7 +84,12 @@ export function ProjectHeader({
 						id: params.workspaceId,
 					});
 					shouldNavigate = currentWorkspace?.projectId === id;
-				} catch {}
+				} catch (error) {
+					console.warn(
+						"[ProjectHeader] Failed to resolve current workspace before closing project",
+						error,
+					);
+				}
 			}
 
 			return { shouldNavigate };

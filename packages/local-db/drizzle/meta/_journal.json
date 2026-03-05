@@ -253,6 +253,13 @@
       "when": 1772642146186,
       "tag": "0035_add_workspace_sections",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1772717281396,
+      "tag": "0036_add_workspaces_section_id_idx",
+      "breakpoints": true
     }
   ]
 }

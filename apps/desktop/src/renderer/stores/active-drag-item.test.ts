@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import {
-	getActiveDragItem,
-	useActiveDragItemStore,
-} from "./active-drag-item";
+import { getActiveDragItem, useActiveDragItemStore } from "./active-drag-item";
 
 const testItem = {
 	id: "ws-1",
@@ -23,9 +20,7 @@ describe("useActiveDragItemStore", () => {
 
 	test("setActiveDragItem stores the item", () => {
 		useActiveDragItemStore.getState().setActiveDragItem(testItem);
-		expect(useActiveDragItemStore.getState().activeDragItem).toEqual(
-			testItem,
-		);
+		expect(useActiveDragItemStore.getState().activeDragItem).toEqual(testItem);
 	});
 
 	test("clearActiveDragItem resets to null", () => {
@@ -38,9 +33,7 @@ describe("useActiveDragItemStore", () => {
 		useActiveDragItemStore.getState().setActiveDragItem(testItem);
 		const newItem = { ...testItem, id: "ws-2", index: 3 };
 		useActiveDragItemStore.getState().setActiveDragItem(newItem);
-		expect(useActiveDragItemStore.getState().activeDragItem).toEqual(
-			newItem,
-		);
+		expect(useActiveDragItemStore.getState().activeDragItem).toEqual(newItem);
 	});
 });
 

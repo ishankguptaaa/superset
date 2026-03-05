@@ -59,6 +59,11 @@ export const createSectionsProcedures = () => {
 			.input(z.object({ id: z.string() }))
 			.mutation(({ input }) => {
 				localDb
+					.update(workspaces)
+					.set({ sectionId: null })
+					.where(eq(workspaces.sectionId, input.id))
+					.run();
+				localDb
 					.delete(workspaceSections)
 					.where(eq(workspaceSections.id, input.id))
 					.run();

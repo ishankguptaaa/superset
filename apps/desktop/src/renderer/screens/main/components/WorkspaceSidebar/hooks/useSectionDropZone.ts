@@ -38,6 +38,10 @@ export function useSectionDropZone({
 	const handleDrop = useCallback(
 		(e: React.DragEvent) => {
 			e.preventDefault();
+			if (autoExpandTimer.current) {
+				clearTimeout(autoExpandTimer.current);
+				autoExpandTimer.current = null;
+			}
 			const item = getActiveDragItem();
 			if (item && canAccept(item)) {
 				moveToSection.mutate({

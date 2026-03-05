@@ -38,9 +38,7 @@ export function computeVisualOrder(
 			.filter((w) => w.projectId === project.id)
 			.sort((a, b) => a.tabOrder - b.tabOrder);
 
-		for (const ws of projectWorkspaces.filter(
-			(w) => w.sectionId === null,
-		)) {
+		for (const ws of projectWorkspaces.filter((w) => w.sectionId === null)) {
 			orderedIds.push(ws.id);
 		}
 

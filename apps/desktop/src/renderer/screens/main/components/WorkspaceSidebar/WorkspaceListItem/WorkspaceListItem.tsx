@@ -261,10 +261,10 @@ export function WorkspaceListItem({
 				useActiveDragItemStore.getState().setActiveDragItem(dragItem);
 				return dragItem;
 			},
-			end: (item) => {
+			end: (item, monitor) => {
 				useActiveDragItemStore.getState().clearActiveDragItem();
 				if (!item) return;
-				if (item.handled) return;
+				if (item.handled || monitor.didDrop()) return;
 				handleReorder(item);
 			},
 			collect: (monitor) => ({ isDragging: monitor.isDragging() }),

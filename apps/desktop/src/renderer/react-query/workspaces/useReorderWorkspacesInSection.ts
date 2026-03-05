@@ -1,4 +1,5 @@
 import { electronTrpc } from "renderer/lib/electron-trpc";
+import { invalidateWorkspaceQueries } from "./invalidateWorkspaceQueries";
 
 export function useReorderWorkspacesInSection(
 	options?: Parameters<
@@ -10,10 +11,7 @@ export function useReorderWorkspacesInSection(
 	return electronTrpc.workspaces.reorderWorkspacesInSection.useMutation({
 		...options,
 		onSuccess: async (...args) => {
-			await utils.workspaces.getAll.invalidate();
-			await utils.workspaces.getAllGrouped.invalidate();
-			await utils.workspaces.getPreviousWorkspace.invalidate();
-			await utils.workspaces.getNextWorkspace.invalidate();
+			await invalidateWorkspaceQueries(utils);
 			await options?.onSuccess?.(...args);
 		},
 	});

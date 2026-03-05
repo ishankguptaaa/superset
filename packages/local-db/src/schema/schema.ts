@@ -129,6 +129,7 @@ export const workspaces = sqliteTable(
 		index("workspaces_project_id_idx").on(table.projectId),
 		index("workspaces_worktree_id_idx").on(table.worktreeId),
 		index("workspaces_last_opened_at_idx").on(table.lastOpenedAt),
+		index("workspaces_section_id_idx").on(table.sectionId),
 		// NOTE: Migration 0006 creates an additional partial unique index:
 		// CREATE UNIQUE INDEX workspaces_unique_branch_per_project
 		//   ON workspaces(project_id) WHERE type = 'branch'

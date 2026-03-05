@@ -12,10 +12,7 @@ describe("computeVisualOrder", () => {
 			{ id: "w1", projectId: "p1", sectionId: null, tabOrder: 1 },
 			{ id: "w2", projectId: "p1", sectionId: null, tabOrder: 0 },
 		];
-		expect(computeVisualOrder(projects, workspaces, [])).toEqual([
-			"w2",
-			"w1",
-		]);
+		expect(computeVisualOrder(projects, workspaces, [])).toEqual(["w2", "w1"]);
 	});
 
 	test("single project with one section — ungrouped first, then section", () => {
@@ -56,10 +53,7 @@ describe("computeVisualOrder", () => {
 			{ id: "w1", projectId: "p1", sectionId: null, tabOrder: 0 },
 			{ id: "w2", projectId: "p2", sectionId: null, tabOrder: 0 },
 		];
-		expect(computeVisualOrder(projects, workspaces, [])).toEqual([
-			"w1",
-			"w2",
-		]);
+		expect(computeVisualOrder(projects, workspaces, [])).toEqual(["w1", "w2"]);
 	});
 
 	test("workspaces sorted by tabOrder within each group", () => {

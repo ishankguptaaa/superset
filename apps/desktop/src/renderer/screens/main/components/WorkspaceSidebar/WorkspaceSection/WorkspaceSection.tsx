@@ -78,7 +78,8 @@ export function WorkspaceSection({
 	});
 
 	const dropZone = useSectionDropZone({
-		canAccept: (item) => item.sectionId !== sectionId,
+		canAccept: (item) =>
+			item.projectId === projectId && item.sectionId !== sectionId,
 		targetSectionId: sectionId,
 		onAutoExpand: isCollapsed
 			? () => toggleCollapsed.mutate({ id: sectionId })
@@ -111,8 +112,9 @@ export function WorkspaceSection({
 				index,
 				originalIndex: index,
 			}),
-			end: (item) => {
+			end: (item, monitor) => {
 				if (!item) return;
+				if (monitor.didDrop()) return;
 				commitSectionReorder(item);
 			},
 			collect: (monitor) => ({ isSectionDragging: monitor.isDragging() }),

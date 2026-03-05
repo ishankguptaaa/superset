@@ -1,0 +1,1 @@
+CREATE INDEX `workspaces_section_id_idx` ON `workspaces` (`section_id`);
