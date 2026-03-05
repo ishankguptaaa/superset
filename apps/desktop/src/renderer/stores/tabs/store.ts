@@ -1835,7 +1835,7 @@ export const useTabsStore = create<TabsStore>()(
 			}),
 			{
 				name: "tabs-storage",
-				version: 7,
+				version: 8,
 				storage: trpcTabsStorage,
 				migrate: (persistedState, version) => {
 					const state = persistedState as TabsState;
@@ -1879,6 +1879,19 @@ export const useTabsStore = create<TabsStore>()(
 									sessionId: legacyPane.chat?.sessionId ?? null,
 								};
 								delete legacyPane.chat;
+							}
+						}
+					}
+					if (version < 8 && state.panes) {
+						// Clear file viewer panes with relative paths (pre-absolute-path era).
+						// We can't resolve them without worktreePath (server-side data).
+						for (const [id, pane] of Object.entries(state.panes)) {
+							if (
+								pane.fileViewer?.filePath &&
+								!pane.fileViewer.filePath.startsWith("/") &&
+								!pane.fileViewer.filePath.startsWith("http")
+							) {
+								delete state.panes[id];
 							}
 						}
 					}

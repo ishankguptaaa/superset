@@ -1,4 +1,4 @@
-import { relative } from "pathe";
+import { isAbsolute, relative, resolve } from "pathe";
 import { useEffect, useMemo } from "react";
 import { electronTrpc } from "renderer/lib/electron-trpc";
 import type { ChangeCategory } from "shared/changes-types";
@@ -21,10 +21,11 @@ interface UseFileContentParams {
  * Derives a worktree-relative path from an absolute path.
  * Returns null if the path is not inside the worktree.
  */
-function toRelativePath(
-	absolutePath: string,
-	worktreePath: string,
-): string | null {
+function toRelativePath(filePath: string, worktreePath: string): string | null {
+	// Handle legacy persisted relative paths by resolving against worktreePath
+	const absolutePath = isAbsolute(filePath)
+		? filePath
+		: resolve(worktreePath, filePath);
 	const rel = relative(worktreePath, absolutePath);
 	if (rel.startsWith("..") || rel === "") return null;
 	return rel;
