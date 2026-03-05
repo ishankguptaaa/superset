@@ -10,7 +10,7 @@ import { Button } from "@superset/ui/button";
 import { toast } from "@superset/ui/sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@superset/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HiMiniMinus, HiMiniPlus } from "react-icons/hi2";
 import { LuUndo2 } from "react-icons/lu";
 import { electronTrpc } from "renderer/lib/electron-trpc";
@@ -32,16 +32,9 @@ interface ChangesViewProps {
 		commitHash?: string,
 	) => void;
 	isExpandedView?: boolean;
-	isActive?: boolean;
 }
 
-const INACTIVE_BRANCH_REFETCH_INTERVAL_MS = 10_000;
-
-export function ChangesView({
-	onFileOpen,
-	isExpandedView,
-	isActive = true,
-}: ChangesViewProps) {
+export function ChangesView({ onFileOpen, isExpandedView }: ChangesViewProps) {
 	const { workspaceId } = useParams({ strict: false });
 	const { data: workspace } = electronTrpc.workspaces.get.useQuery(
 		{ id: workspaceId ?? "" },
@@ -50,22 +43,12 @@ export function ChangesView({
 	const worktreePath = workspace?.worktreePath;
 	const projectId = workspace?.projectId;
 
-	const {
-		status,
-		isLoading,
-		effectiveBaseBranch,
-		branchData,
-		refetch,
-		refetchBranch,
-	} = useGitChangesStatus({
-		worktreePath,
-		refetchInterval: isActive ? 2500 : undefined,
-		refetchOnWindowFocus: isActive,
-		branchRefetchInterval: isActive
-			? undefined
-			: INACTIVE_BRANCH_REFETCH_INTERVAL_MS,
-		branchRefetchOnWindowFocus: true,
-	});
+	const { status, isLoading, effectiveBaseBranch, branchData, refetch } =
+		useGitChangesStatus({
+			worktreePath,
+			refetchInterval: 2500,
+			refetchOnWindowFocus: true,
+		});
 
 	const {
 		data: githubStatus,
@@ -74,32 +57,18 @@ export function ChangesView({
 	} = electronTrpc.workspaces.getGitHubStatus.useQuery(
 		{ workspaceId: workspaceId ?? "" },
 		{
-			enabled: !!workspaceId && isActive,
-			refetchInterval: isActive ? 10000 : false,
+			enabled: !!workspaceId,
+			refetchInterval: 10000,
 		},
 	);
 
 	useBranchSyncInvalidation({
-		gitBranch: status?.branch ?? branchData?.currentBranch ?? undefined,
+		gitBranch: status?.branch,
 		workspaceBranch: workspace?.branch,
 		workspaceId: workspaceId ?? "",
 	});
 
-	const wasActiveRef = useRef(isActive);
-
-	useEffect(() => {
-		const wasActive = wasActiveRef.current;
-		wasActiveRef.current = isActive;
-
-		if (!wasActive && isActive) {
-			refetchBranch();
-			refetch();
-			refetchGithubStatus();
-		}
-	}, [isActive, refetchBranch, refetch, refetchGithubStatus]);
-
 	const handleRefresh = () => {
-		refetchBranch();
 		refetch();
 		refetchGithubStatus();
 	};
@@ -280,10 +249,10 @@ export function ChangesView({
 
 	const expandedCommitHashes = useMemo(
 		() =>
-			isActive && expandedSections.committed
+			expandedSections.committed
 				? Array.from(expandedCommits)
 				: ([] as string[]),
-		[isActive, expandedSections.committed, expandedCommits],
+		[expandedSections.committed, expandedCommits],
 	);
 
 	const commitFilesQueries = electronTrpc.useQueries((t) =>
