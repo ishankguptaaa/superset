@@ -28,10 +28,12 @@ import {
 	LuEye,
 	LuEyeOff,
 	LuFolderOpen,
+	LuFolderPlus,
 	LuPencil,
 } from "react-icons/lu";
 import { electronTrpc } from "renderer/lib/electron-trpc";
 import {
+	useCreateSectionFromWorkspaces,
 	useMoveWorkspacesToSection,
 	useMoveWorkspaceToSection,
 	useReorderWorkspaces,
@@ -151,6 +153,7 @@ export function WorkspaceListItem({
 
 	const moveToSection = useMoveWorkspaceToSection();
 	const bulkMoveToSection = useMoveWorkspacesToSection();
+	const createSectionFromWorkspaces = useCreateSectionFromWorkspaces();
 
 	const handleContextMenuOpenChange = (open: boolean) => {
 		setIsContextMenuOpen(open);
@@ -171,6 +174,17 @@ export function WorkspaceListItem({
 			selectionStore.getState().clearSelection();
 		} else {
 			moveToSection.mutate({ workspaceId: id, sectionId: targetSectionId });
+		}
+	};
+
+	const handleCreateSectionFromSelection = () => {
+		const captured = contextMenuSelectionRef.current;
+		if (captured.length > 1) {
+			createSectionFromWorkspaces.mutate({
+				projectId,
+				workspaceIds: captured,
+			});
+			selectionStore.getState().clearSelection();
 		}
 	};
 
@@ -621,6 +635,8 @@ export function WorkspaceListItem({
 		</ContextMenuItem>
 	);
 
+	const isMultiSelectContext = contextMenuSelectionRef.current.length > 1;
+
 	const commonContextMenuItems = (
 		<>
 			<ContextMenuItem onSelect={handleOpenInFinder}>
@@ -657,6 +673,18 @@ export function WorkspaceListItem({
 							))}
 						</ContextMenuSubContent>
 					</ContextMenuSub>
+				</>
+			)}
+			{isMultiSelectContext && (
+				<>
+					{sections.length === 0 && <ContextMenuSeparator />}
+					<ContextMenuItem onSelect={handleCreateSectionFromSelection}>
+						<LuFolderPlus
+							className="size-4 mr-2"
+							strokeWidth={STROKE_WIDTH}
+						/>
+						Create Section from Selection
+					</ContextMenuItem>
 				</>
 			)}
 			<ContextMenuSeparator />
