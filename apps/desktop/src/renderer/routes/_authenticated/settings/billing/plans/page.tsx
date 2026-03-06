@@ -9,6 +9,7 @@ import { Fragment, useState } from "react";
 import { HiArrowLeft, HiArrowUpRight, HiCheck } from "react-icons/hi2";
 import { env } from "renderer/env.renderer";
 import { authClient } from "renderer/lib/auth-client";
+import { electronTrpc } from "renderer/lib/electron-trpc";
 import { useCollections } from "renderer/routes/_authenticated/providers/CollectionsProvider";
 import type { PlanTier } from "../constants";
 
@@ -199,6 +200,7 @@ function PlansPage() {
 	const [isCanceling, setIsCanceling] = useState(false);
 	const [isRestoring, setIsRestoring] = useState(false);
 	const { data: session } = authClient.useSession();
+	const openUrl = electronTrpc.external.openUrl.useMutation();
 	const collections = useCollections();
 
 	const activeOrgId = session?.session?.activeOrganizationId;
@@ -252,7 +254,7 @@ function PlansPage() {
 		}
 
 		if (action === "contact") {
-			window.open("mailto:founders@superset.sh", "_blank");
+			openUrl.mutate("mailto:founders@superset.sh");
 			return;
 		}
 
@@ -358,13 +360,14 @@ function PlansPage() {
 						</span>
 						. If you have any questions or would like further support with your
 						plan,{" "}
-						<a
-							href="mailto:founders@superset.sh"
+						<button
+							type="button"
+							onClick={() => openUrl.mutate("mailto:founders@superset.sh")}
 							className="inline-flex items-center gap-1 text-primary hover:underline"
 						>
 							contact us
 							<HiArrowUpRight className="h-3 w-3" />
-						</a>
+						</button>
 						.
 					</p>
 				</div>
