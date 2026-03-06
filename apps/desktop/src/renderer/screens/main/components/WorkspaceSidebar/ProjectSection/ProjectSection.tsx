@@ -192,7 +192,6 @@ export function ProjectSection({
 									sectionId={null}
 									sections={sections}
 									isCollapsed={isSidebarCollapsed}
-									projectId={projectId}
 									orderedWorkspaceIds={orderedWorkspaceIds}
 								/>
 								{sections.map((section, sectionIndex) => (
@@ -270,7 +269,6 @@ export function ProjectSection({
 									shortcutBaseIndex={shortcutBaseIndex}
 									sectionId={null}
 									sections={sections}
-									projectId={projectId}
 									orderedWorkspaceIds={orderedWorkspaceIds}
 								/>
 							</div>

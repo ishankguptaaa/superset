@@ -1,31 +1,27 @@
 import { useDragLayer } from "react-dnd";
 
 export function MultiDragPreview() {
-	const { isDragging, item, currentOffset } = useDragLayer((monitor) => ({
-		isDragging: monitor.isDragging(),
-		item: monitor.getItem(),
-		currentOffset: monitor.getClientOffset(),
-	}));
+	const drag = useDragLayer((monitor) => {
+		if (!monitor.isDragging()) return null;
+		const item = monitor.getItem();
+		if (!item?.selectedIds || item.selectedIds.length <= 1) return null;
+		const offset = monitor.getClientOffset();
+		if (!offset) return null;
+		return { offset, count: item.selectedIds.length };
+	});
 
-	if (
-		!isDragging ||
-		!currentOffset ||
-		!item?.selectedIds ||
-		item.selectedIds.length <= 1
-	) {
-		return null;
-	}
+	if (!drag) return null;
 
 	return (
 		<div
 			className="fixed pointer-events-none z-50"
 			style={{
-				left: currentOffset.x + 12,
-				top: currentOffset.y - 12,
+				left: drag.offset.x + 12,
+				top: drag.offset.y - 12,
 			}}
 		>
 			<div className="bg-primary text-primary-foreground text-xs font-medium px-2 py-1 rounded-full shadow-md">
-				{item.selectedIds.length} workspaces
+				{drag.count} workspaces
 			</div>
 		</div>
 	);

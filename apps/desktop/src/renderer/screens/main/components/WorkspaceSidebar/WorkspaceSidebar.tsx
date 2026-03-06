@@ -44,6 +44,12 @@ export function WorkspaceSidebar({
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
+				if (
+					(e.target as HTMLElement).closest(
+						"input, textarea, [contenteditable]",
+					)
+				)
+					return;
 				clearSelection();
 			}
 		};

@@ -197,7 +197,6 @@ export function WorkspaceSection({
 				sectionId={sectionId}
 				sections={allSections}
 				isCollapsed={isSidebarCollapsed}
-				projectId={projectId}
 				orderedWorkspaceIds={orderedWorkspaceIds}
 			/>
 		);

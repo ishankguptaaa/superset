@@ -7,7 +7,6 @@ interface WorkspaceListProps {
 	sectionId: string | null;
 	sections: Pick<SidebarSection, "id" | "name">[];
 	isCollapsed?: boolean;
-	projectId?: string;
 	orderedWorkspaceIds?: string[];
 }
 

@@ -63,8 +63,3 @@ export const useWorkspaceSelectionStore = create<WorkspaceSelectionState>(
 			}),
 	}),
 );
-
-/** Synchronous read for native event handlers (outside React lifecycle) */
-export function getSelectedWorkspaceIds(): string[] {
-	return [...useWorkspaceSelectionStore.getState().selectedIds];
-}

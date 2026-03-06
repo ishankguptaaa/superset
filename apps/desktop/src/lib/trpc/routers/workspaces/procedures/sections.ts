@@ -190,13 +190,11 @@ export const createSectionsProcedures = () => {
 					}
 				}
 
-				for (const workspaceId of input.workspaceIds) {
-					localDb
-						.update(workspaces)
-						.set({ sectionId: input.sectionId })
-						.where(eq(workspaces.id, workspaceId))
-						.run();
-				}
+				localDb
+					.update(workspaces)
+					.set({ sectionId: input.sectionId })
+					.where(inArray(workspaces.id, input.workspaceIds))
+					.run();
 
 				return { success: true };
 			}),

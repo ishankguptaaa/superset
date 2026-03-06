@@ -253,11 +253,8 @@ export function WorkspaceListItem({
 			}
 		}
 
-		selectionStore.setState({
-			selectedIds: new Set(),
-			selectedProjectId: projectId,
-			lastClickedId: id,
-		});
+		selectionStore.getState().clearSelection();
+		selectionStore.setState({ lastClickedId: id });
 		clearWorkspaceAttentionStatus(id);
 		navigateToWorkspace(id, navigate);
 	};
