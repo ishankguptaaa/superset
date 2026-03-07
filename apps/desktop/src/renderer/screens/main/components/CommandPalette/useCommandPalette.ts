@@ -1,6 +1,8 @@
+import type { UseNavigateResult } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { useDebouncedValue } from "renderer/hooks/useDebouncedValue";
 import { electronTrpc } from "renderer/lib/electron-trpc";
+import { navigateToWorkspace } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
 import { useFileSearch } from "renderer/screens/main/components/WorkspaceView/RightSidebar/FilesView/hooks/useFileSearch/useFileSearch";
 import {
 	type SearchScope,
@@ -13,11 +15,13 @@ const SEARCH_LIMIT = 50;
 interface UseCommandPaletteParams {
 	workspaceId: string;
 	worktreePath: string | undefined;
+	navigate: UseNavigateResult<string>;
 }
 
 export function useCommandPalette({
 	workspaceId,
 	worktreePath,
+	navigate,
 }: UseCommandPaletteParams) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
@@ -149,8 +153,11 @@ export function useCommandPalette({
 			const targetWs = resultWorkspaceId ?? workspaceId;
 			useTabsStore.getState().addFileViewerPane(targetWs, { filePath });
 			handleOpenChange(false);
+			if (targetWs !== workspaceId) {
+				navigateToWorkspace(targetWs, navigate);
+			}
 		},
-		[workspaceId, handleOpenChange],
+		[workspaceId, handleOpenChange, navigate],
 	);
 
 	const setIncludePattern = useCallback(
