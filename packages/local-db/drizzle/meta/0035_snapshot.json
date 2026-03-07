@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "f5602495-618f-494e-aaf0-003c55f32d2c",
+  "id": "589aac6d-a11a-44bd-97f9-be06311fcb95",
   "prevId": "ba86e644-bfb3-445c-83c0-ac90043bbca6",
   "tables": {
     "browser_history": {
@@ -1030,6 +1030,13 @@
           "autoincrement": false,
           "default": false
         },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "integer",
@@ -1196,6 +1203,13 @@
           "name": "workspaces_last_opened_at_idx",
           "columns": [
             "last_opened_at"
+          ],
+          "isUnique": false
+        },
+        "workspaces_section_id_idx": {
+          "name": "workspaces_section_id_idx",
+          "columns": [
+            "section_id"
           ],
           "isUnique": false
         }

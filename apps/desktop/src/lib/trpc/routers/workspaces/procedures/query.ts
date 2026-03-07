@@ -115,6 +115,7 @@ export const createQueryProcedures = () => {
 				name: string;
 				tabOrder: number;
 				isCollapsed: boolean;
+				color: string | null;
 				workspaces: WorkspaceItem[];
 			};
 
@@ -158,6 +159,7 @@ export const createQueryProcedures = () => {
 						name: s.name,
 						tabOrder: s.tabOrder,
 						isCollapsed: s.isCollapsed ?? false,
+						color: s.color ?? null,
 						workspaces: [] as WorkspaceItem[],
 					}));
 

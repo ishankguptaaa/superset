@@ -38,6 +38,23 @@ export const createSectionsProcedures = () => {
 				return section;
 			}),
 
+		setSectionColor: publicProcedure
+			.input(
+				z.object({
+					id: z.string(),
+					color: z.string().nullable(),
+				}),
+			)
+			.mutation(({ input }) => {
+				localDb
+					.update(workspaceSections)
+					.set({ color: input.color })
+					.where(eq(workspaceSections.id, input.id))
+					.run();
+
+				return { success: true };
+			}),
+
 		renameSection: publicProcedure
 			.input(
 				z.object({

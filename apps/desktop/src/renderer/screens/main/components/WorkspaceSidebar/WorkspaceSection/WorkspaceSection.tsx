@@ -3,6 +3,9 @@ import {
 	ContextMenuContent,
 	ContextMenuItem,
 	ContextMenuSeparator,
+	ContextMenuSub,
+	ContextMenuSubContent,
+	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "@superset/ui/context-menu";
 import { toast } from "@superset/ui/sonner";
@@ -11,9 +14,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { HiChevronRight } from "react-icons/hi2";
-import { LuPencil, LuTrash2 } from "react-icons/lu";
+import { LuPalette, LuPencil, LuTrash2 } from "react-icons/lu";
 import { electronTrpc } from "renderer/lib/electron-trpc";
 import { useReorderSections } from "renderer/react-query/workspaces";
+import {
+	PROJECT_COLORS,
+	PROJECT_COLOR_DEFAULT,
+} from "shared/constants/project-colors";
 import { STROKE_WIDTH } from "../constants";
 import { useSectionDropZone } from "../hooks";
 import { RenameInput } from "../RenameInput";
@@ -28,6 +35,7 @@ interface WorkspaceSectionProps {
 	index: number;
 	name: string;
 	isCollapsed: boolean;
+	color?: string | null;
 	workspaces: SidebarWorkspace[];
 	shortcutBaseIndex: number;
 	isSidebarCollapsed?: boolean;
@@ -41,6 +49,7 @@ export function WorkspaceSection({
 	index,
 	name,
 	isCollapsed,
+	color = null,
 	workspaces,
 	shortcutBaseIndex,
 	isSidebarCollapsed = false,
@@ -50,6 +59,8 @@ export function WorkspaceSection({
 	const utils = electronTrpc.useUtils();
 	const [isRenaming, setIsRenaming] = useState(false);
 	const [renameValue, setRenameValue] = useState(name);
+
+	const hasColor = color && color !== PROJECT_COLOR_DEFAULT;
 
 	const toggleCollapsed =
 		electronTrpc.workspaces.toggleSectionCollapsed.useMutation({
@@ -78,6 +89,23 @@ export function WorkspaceSection({
 			toast.error(`Failed to delete section: ${error.message}`);
 		},
 	});
+
+	const setSectionColor =
+		electronTrpc.workspaces.setSectionColor.useMutation({
+			onSuccess: () => {
+				utils.workspaces.getAllGrouped.invalidate();
+			},
+			onError: (error) => {
+				toast.error(`Failed to set color: ${error.message}`);
+			},
+		});
+
+	const handleColorChange = (newColor: string) => {
+		setSectionColor.mutate({
+			id: sectionId,
+			color: newColor === PROJECT_COLOR_DEFAULT ? null : newColor,
+		});
+	};
 
 	const dropZone = useSectionDropZone({
 		canAccept: (item) =>
@@ -214,7 +242,7 @@ export function WorkspaceSection({
 							sectionDrag(sectionDrop(node));
 						}}
 						className={cn(
-							"flex items-center w-full pl-5 pr-2 py-1 text-[11px] font-medium uppercase tracking-wider",
+							"flex items-center w-full pl-3 pr-2 py-1.5 text-[11px] font-medium uppercase tracking-wider",
 							"text-muted-foreground hover:bg-muted/50 transition-colors",
 							dropZone.isDragOver && "bg-primary/10 ring-1 ring-primary/40",
 						)}
@@ -243,6 +271,12 @@ export function WorkspaceSection({
 										!isCollapsed && "rotate-90",
 									)}
 								/>
+								{hasColor && (
+									<span
+										className="size-2 rounded-full shrink-0"
+										style={{ backgroundColor: color }}
+									/>
+								)}
 								<span className="truncate">{name}</span>
 								<span className="text-[10px] tabular-nums font-normal">
 									({workspaces.length})
@@ -256,6 +290,42 @@ export function WorkspaceSection({
 						<LuPencil className="size-4 mr-2" strokeWidth={STROKE_WIDTH} />
 						Rename Section
 					</ContextMenuItem>
+					<ContextMenuSub>
+						<ContextMenuSubTrigger>
+							<LuPalette className="size-4 mr-2" strokeWidth={STROKE_WIDTH} />
+							Set Color
+						</ContextMenuSubTrigger>
+						<ContextMenuSubContent className="w-36">
+							{PROJECT_COLORS.map((c) => {
+								const isDefault = c.value === PROJECT_COLOR_DEFAULT;
+								return (
+									<ContextMenuItem
+										key={c.value}
+										onSelect={() => handleColorChange(c.value)}
+										className="flex items-center gap-2"
+									>
+										<span
+											className={cn(
+												"size-3 rounded-full border",
+												isDefault
+													? "border-border bg-muted"
+													: "border-border/50",
+											)}
+											style={
+												isDefault ? undefined : { backgroundColor: c.value }
+											}
+										/>
+										<span>{c.name}</span>
+										{(isDefault ? !hasColor : color === c.value) && (
+											<span className="ml-auto text-xs text-muted-foreground">
+												✓
+											</span>
+										)}
+									</ContextMenuItem>
+								);
+							})}
+						</ContextMenuSubContent>
+					</ContextMenuSub>
 					<ContextMenuSeparator />
 					<ContextMenuItem
 						onSelect={handleDelete}
@@ -280,7 +350,14 @@ export function WorkspaceSection({
 						transition={{ duration: 0.15, ease: "easeOut" }}
 						className="overflow-hidden"
 					>
-						<div>
+						<div
+							className="pl-2 ml-3"
+							style={
+								hasColor
+									? { borderLeft: `2px solid ${color}` }
+									: { borderLeft: "2px solid var(--color-border)" }
+							}
+						>
 							<WorkspaceList
 								workspaces={workspaces}
 								shortcutBaseIndex={shortcutBaseIndex}

@@ -157,6 +157,7 @@ export const workspaceSections = sqliteTable(
 		name: text("name").notNull(),
 		tabOrder: integer("tab_order").notNull(),
 		isCollapsed: integer("is_collapsed", { mode: "boolean" }).default(false),
+		color: text("color"),
 		createdAt: integer("created_at")
 			.notNull()
 			.$defaultFn(() => Date.now()),

@@ -280,6 +280,7 @@ export function ProjectSection({
 									index={sectionIndex}
 									name={section.name}
 									isCollapsed={section.isCollapsed}
+									color={section.color}
 									workspaces={section.workspaces}
 									shortcutBaseIndex={sectionBaseIndices.get(section.id) ?? 0}
 									allSections={sections}

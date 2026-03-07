@@ -33,5 +33,6 @@ export interface SidebarSection {
 	name: string;
 	tabOrder: number;
 	isCollapsed: boolean;
+	color: string | null;
 	workspaces: SidebarWorkspace[];
 }
