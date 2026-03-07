@@ -1,6 +1,6 @@
 import { Button } from "@superset/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@superset/ui/tooltip";
-import { LuFolderTree, LuList } from "react-icons/lu";
+import { VscListFlat, VscListTree } from "react-icons/vsc";
 import type { ChangesViewMode } from "../../types";
 
 interface ViewModeToggleProps {
@@ -27,9 +27,9 @@ export function ViewModeToggle({
 					aria-label={viewMode === "grouped" ? "Grouped view" : "Tree view"}
 				>
 					{viewMode === "grouped" ? (
-						<LuList className="size-3.5" />
+						<VscListTree className="size-3.5" />
 					) : (
-						<LuFolderTree className="size-3.5" />
+						<VscListFlat className="size-3.5" />
 					)}
 				</Button>
 			</TooltipTrigger>
