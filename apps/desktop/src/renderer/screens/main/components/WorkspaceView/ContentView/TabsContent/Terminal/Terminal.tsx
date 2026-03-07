@@ -1,7 +1,4 @@
-import type { FitAddon } from "@xterm/addon-fit";
-import type { SearchAddon } from "@xterm/addon-search";
-import type { Terminal as XTerm } from "@xterm/xterm";
-import "@xterm/xterm/css/xterm.css";
+import type { FitAddon, Terminal as XTerm } from "ghostty-web";
 import { useEffect, useRef, useState } from "react";
 import { electronTrpc } from "renderer/lib/electron-trpc";
 import { useTabsStore } from "renderer/stores/tabs/store";
@@ -11,6 +8,7 @@ import {
 	DEFAULT_TERMINAL_FONT_FAMILY,
 	DEFAULT_TERMINAL_FONT_SIZE,
 } from "./config";
+import { ensureGhosttyRuntime } from "./ghostty-runtime";
 import { getDefaultTerminalBg, type TerminalRendererRef } from "./helpers";
 import {
 	useFileLinkClick,
@@ -36,7 +34,12 @@ import { shellEscapePaths } from "./utils";
 const stripLeadingEmoji = (text: string) =>
 	text.trim().replace(/^[\p{Emoji}\p{Symbol}]\s*/u, "");
 
-export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
+export const Terminal = ({
+	paneId,
+	tabId,
+	workspaceId,
+	isVisible = true,
+}: TerminalProps) => {
 	const pane = useTabsStore((s) => s.panes[paneId]);
 	const paneInitialCwd = pane?.initialCwd;
 	const clearPaneInitialData = useTabsStore((s) => s.clearPaneInitialData);
@@ -69,7 +72,6 @@ export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
 	const terminalRef = useRef<HTMLDivElement>(null);
 	const xtermRef = useRef<XTerm | null>(null);
 	const fitAddonRef = useRef<FitAddon | null>(null);
-	const searchAddonRef = useRef<SearchAddon | null>(null);
 	const rendererRef = useRef<TerminalRendererRef | null>(null);
 	const isExitedRef = useRef(false);
 	const [exitStatus, setExitStatus] = useState<"killed" | "exited" | null>(
@@ -166,6 +168,7 @@ export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
 	} = useTerminalRefs({
 		paneId,
 		tabId,
+		isVisible,
 		focusedPaneId,
 		terminalTheme,
 		paneInitialCwd,
@@ -237,6 +240,7 @@ export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
 	// Auto-retry connection with exponential backoff
 	const retryCountRef = useRef(0);
 	const MAX_RETRIES = 5;
+	const [isRendererReady, setIsRendererReady] = useState(false);
 
 	// Stream handling
 	const { handleTerminalExit, handleStreamError, handleStreamData } =
@@ -257,6 +261,30 @@ export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
 	// Populate handler refs for flushPendingEvents to use
 	handleTerminalExitRef.current = handleTerminalExit;
 	handleStreamErrorRef.current = handleStreamError;
+
+	useEffect(() => {
+		let isCancelled = false;
+
+		ensureGhosttyRuntime()
+			.then(() => {
+				if (isCancelled) return;
+				setIsRendererReady(true);
+			})
+			.catch((error) => {
+				if (isCancelled) return;
+
+				console.error("[Terminal] Failed to initialize Ghostty:", error);
+				setConnectionError(
+					error instanceof Error
+						? error.message
+						: "Failed to initialize terminal renderer",
+				);
+			});
+
+		return () => {
+			isCancelled = true;
+		};
+	}, [setConnectionError]);
 
 	// Stream subscription
 	electronTrpc.terminal.stream.useSubscription(paneId, {
@@ -301,6 +329,7 @@ export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
 	const { isSearchOpen, setIsSearchOpen } = useTerminalHotkeys({
 		isFocused,
 		xtermRef,
+		supportsSearch: false,
 	});
 	useEffect(() => {
 		if (!isRestoredMode) return;
@@ -311,9 +340,9 @@ export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
 		tabIdRef,
 		workspaceId,
 		terminalRef,
+		isRendererReady,
 		xtermRef,
 		fitAddonRef,
-		searchAddonRef,
 		rendererRef,
 		isExitedRef,
 		wasKilledByUserRef,
@@ -381,6 +410,29 @@ export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
 		fitAddonRef.current?.fit();
 	}, [fontSettings]);
 
+	useEffect(() => {
+		const xterm = xtermRef.current;
+		const fitAddon = fitAddonRef.current;
+		if (!xterm || !fitAddon || !isRendererReady) return;
+
+		if (!isVisible) {
+			xterm.blur();
+			return;
+		}
+
+		const frame = requestAnimationFrame(() => {
+			if (xtermRef.current !== xterm || fitAddonRef.current !== fitAddon)
+				return;
+			fitAddon.fit();
+			resizeRef.current({ paneId, cols: xterm.cols, rows: xterm.rows });
+			if (isFocusedRef.current) {
+				xterm.focus();
+			}
+		});
+
+		return () => cancelAnimationFrame(frame);
+	}, [isRendererReady, isVisible, paneId, resizeRef, isFocusedRef]);
+
 	const terminalBg = terminalTheme?.background ?? getDefaultTerminalBg();
 
 	const handleDragOver = (event: React.DragEvent) => {
@@ -416,7 +468,7 @@ export const Terminal = ({ paneId, tabId, workspaceId }: TerminalProps) => {
 			onDrop={handleDrop}
 		>
 			<TerminalSearch
-				searchAddon={searchAddonRef.current}
+				searchAddon={null}
 				isOpen={isSearchOpen}
 				onClose={() => setIsSearchOpen(false)}
 			/>

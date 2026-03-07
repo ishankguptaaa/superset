@@ -1,13 +1,17 @@
-import type { FitAddon } from "@xterm/addon-fit";
-import { SearchAddon } from "@xterm/addon-search";
-import type { IDisposable, ITheme, Terminal as XTerm } from "@xterm/xterm";
+import type {
+	FitAddon,
+	IDisposable,
+	ITheme,
+	Terminal as XTerm,
+} from "ghostty-web";
 import type { MutableRefObject, RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTabsStore } from "renderer/stores/tabs/store";
 import { killTerminalForPane } from "renderer/stores/tabs/utils/terminal-cleanup";
 import { scheduleTerminalAttach } from "../attach-scheduler";
 import { sanitizeForTitle } from "../commandBuffer";
-import { DEBUG_TERMINAL, FIRST_RENDER_RESTORE_FALLBACK_MS } from "../config";
+import { FIRST_RENDER_RESTORE_FALLBACK_MS } from "../config";
+import { terminalDebugLog } from "../debug";
 import {
 	createTerminalInstance,
 	setupClickToMoveCursor,
@@ -82,9 +86,9 @@ export interface UseTerminalLifecycleOptions {
 	tabIdRef: MutableRefObject<string>;
 	workspaceId: string;
 	terminalRef: RefObject<HTMLDivElement | null>;
+	isRendererReady: boolean;
 	xtermRef: MutableRefObject<XTerm | null>;
 	fitAddonRef: MutableRefObject<FitAddon | null>;
-	searchAddonRef: MutableRefObject<SearchAddon | null>;
 	rendererRef: MutableRefObject<TerminalRendererRef | null>;
 	isExitedRef: MutableRefObject<boolean>;
 	wasKilledByUserRef: MutableRefObject<boolean>;
@@ -144,9 +148,9 @@ export function useTerminalLifecycle({
 	tabIdRef,
 	workspaceId,
 	terminalRef,
+	isRendererReady,
 	xtermRef,
 	fitAddonRef,
-	searchAddonRef,
 	rendererRef,
 	isExitedRef,
 	wasKilledByUserRef,
@@ -195,12 +199,12 @@ export function useTerminalLifecycle({
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: refs used intentionally
 	useEffect(() => {
+		if (!isRendererReady) return;
+
 		const container = terminalRef.current;
 		if (!container) return;
 
-		if (DEBUG_TERMINAL) {
-			console.log(`[Terminal] Mount: ${paneId}`);
-		}
+		terminalDebugLog("lifecycle", paneId, "mount");
 
 		// Cancel pending detach from previous unmount
 		const pendingDetach = pendingDetaches.get(paneId);
@@ -219,7 +223,7 @@ export function useTerminalLifecycle({
 			xterm,
 			fitAddon,
 			renderer,
-			cleanup: cleanupQuerySuppression,
+			cleanup: cleanupTerminalInstance,
 		} = createTerminalInstance(container, {
 			cwd: workspaceCwdRef.current ?? undefined,
 			initialTheme: initialThemeRef.current,
@@ -248,12 +252,6 @@ export function useTerminalLifecycle({
 			xterm.focus();
 		}
 
-		if (!isUnmounted) {
-			const searchAddon = new SearchAddon();
-			xterm.loadAddon(searchAddon);
-			searchAddonRef.current = searchAddon;
-		}
-
 		// Wait for first render before applying restoration
 		let renderDisposable: IDisposable | null = null;
 		let firstRenderFallback: ReturnType<typeof setTimeout> | null = null;
@@ -266,16 +264,24 @@ export function useTerminalLifecycle({
 			renderDisposable?.dispose();
 			renderDisposable = null;
 			didFirstRenderRef.current = true;
+			terminalDebugLog("restore", paneId, "first-render");
 			maybeApplyInitialState();
 		});
 
 		firstRenderFallback = setTimeout(() => {
 			if (isUnmounted || didFirstRenderRef.current) return;
 			didFirstRenderRef.current = true;
+			terminalDebugLog("restore", paneId, "first-render:fallback-timeout", {
+				timeoutMs: FIRST_RENDER_RESTORE_FALLBACK_MS,
+			});
 			maybeApplyInitialState();
 		}, FIRST_RENDER_RESTORE_FALLBACK_MS);
 
 		const restartTerminalSession = () => {
+			terminalDebugLog("attach", paneId, "restartSession", {
+				cols: xterm.cols,
+				rows: xterm.rows,
+			});
 			isExitedRef.current = false;
 			isStreamReadyRef.current = false;
 			wasKilledByUserRef.current = false;
@@ -293,10 +299,16 @@ export function useTerminalLifecycle({
 				},
 				{
 					onSuccess: (result) => {
+						terminalDebugLog("attach", paneId, "restartSession:success", {
+							isNew: result.isNew,
+							isColdRestore: result.isColdRestore,
+							hasSnapshot: !!result.snapshot,
+						});
 						pendingInitialStateRef.current = result;
 						maybeApplyInitialState();
 					},
 					onError: (error) => {
+						terminalDebugLog("attach", paneId, "restartSession:error", error);
 						console.error("[Terminal] Failed to restart:", error);
 						setConnectionError(error.message || "Failed to restart terminal");
 						isStreamReadyRef.current = true;
@@ -385,12 +397,18 @@ export function useTerminalLifecycle({
 
 					const finishAttach = () => {
 						clearAttachInFlight(paneId, attachId);
+						terminalDebugLog("attach", paneId, "createOrAttach:settled", {
+							attachId,
+						});
 						done();
 					};
 
-					if (DEBUG_TERMINAL) {
-						console.log(`[Terminal] createOrAttach start: ${paneId}`);
-					}
+					terminalDebugLog("attach", paneId, "createOrAttach:start", {
+						attachId,
+						cols: xterm.cols,
+						rows: xterm.rows,
+						cwd: initialCwd,
+					});
 					createOrAttachRef.current(
 						{
 							paneId,
@@ -403,6 +421,13 @@ export function useTerminalLifecycle({
 						{
 							onSuccess: (result) => {
 								if (!isAttachActive()) return;
+								terminalDebugLog("attach", paneId, "createOrAttach:success", {
+									attachId,
+									isNew: result.isNew,
+									isColdRestore: result.isColdRestore,
+									hasSnapshot: !!result.snapshot,
+									hasScrollback: !!result.scrollback,
+								});
 								setConnectionError(null);
 								clearPaneInitialDataRef.current(paneId);
 
@@ -442,6 +467,10 @@ export function useTerminalLifecycle({
 							},
 							onError: (error) => {
 								if (!isAttachActive()) return;
+								terminalDebugLog("attach", paneId, "createOrAttach:error", {
+									attachId,
+									message: error.message,
+								});
 								if (error.message?.includes("TERMINAL_SESSION_KILLED")) {
 									wasKilledByUserRef.current = true;
 									isExitedRef.current = true;
@@ -561,17 +590,21 @@ export function useTerminalLifecycle({
 			const wasAtBottom =
 				xterm.buffer.active.viewportY >= xterm.buffer.active.baseY;
 
-			// Rebuild stale WebGL glyph cache after occlusion and force a paint pass.
-			rendererRef.current?.current.clearTextureAtlas?.();
-
 			fitAddon.fit();
-			xterm.refresh(0, Math.max(0, xterm.rows - 1));
 
 			if (forceResize || xterm.cols !== prevCols || xterm.rows !== prevRows) {
+				terminalDebugLog("resize", paneId, "reattachRecovery", {
+					forceResize,
+					prevCols,
+					prevRows,
+					nextCols: xterm.cols,
+					nextRows: xterm.rows,
+				});
 				resizeRef.current({ paneId, cols: xterm.cols, rows: xterm.rows });
 			}
 
 			if (isFocusedRef.current && document.hasFocus()) {
+				terminalDebugLog("focus", paneId, "reattachRecovery:focus");
 				xterm.focus();
 			}
 
@@ -616,10 +649,11 @@ export function useTerminalLifecycle({
 		};
 
 		const handleVisibilityChange = () => {
-			if (document.hidden) return;
+			if (document.hidden || !isFocusedRef.current) return;
 			scheduleReattachRecovery(isFocusedRef.current);
 		};
 		const handleWindowFocus = () => {
+			if (!isFocusedRef.current) return;
 			scheduleReattachRecovery(isFocusedRef.current);
 		};
 
@@ -630,9 +664,7 @@ export function useTerminalLifecycle({
 			isPaneDestroyed(useTabsStore.getState().panes, paneId);
 
 		return () => {
-			if (DEBUG_TERMINAL) {
-				console.log(`[Terminal] Unmount: ${paneId}`);
-			}
+			terminalDebugLog("lifecycle", paneId, "unmount");
 			cancelInitialAttach();
 			isUnmounted = true;
 			attachCanceled = true;
@@ -656,7 +688,7 @@ export function useTerminalLifecycle({
 			cleanupResize();
 			cleanupPaste();
 			cleanupCopy();
-			cleanupQuerySuppression();
+			cleanupTerminalInstance();
 			unregisterClearCallbackRef.current(paneId);
 			unregisterScrollToBottomCallbackRef.current(paneId);
 			unregisterGetSelectionCallbackRef.current(paneId);
@@ -682,14 +714,15 @@ export function useTerminalLifecycle({
 			resetModes();
 			renderDisposable?.dispose();
 
-			setTimeout(() => xterm.dispose(), 0);
+			xterm.blur();
+			xterm.dispose();
 
 			xtermRef.current = null;
-			searchAddonRef.current = null;
 			rendererRef.current = null;
 			setXtermInstance(null);
 		};
 	}, [
+		isRendererReady,
 		paneId,
 		workspaceId,
 		maybeApplyInitialState,

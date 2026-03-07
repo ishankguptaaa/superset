@@ -9,14 +9,12 @@ import { useTabsStore } from "renderer/stores/tabs/store";
 import { useTerminalCallbacksStore } from "renderer/stores/tabs/terminal-callbacks";
 import type { SplitPaneOptions, Tab } from "renderer/stores/tabs/types";
 import { TabContentContextMenu } from "../TabContentContextMenu";
-import { Terminal } from "../Terminal";
 import { BasePaneWindow, PaneToolbarActions } from "./components";
 
 interface TabPaneProps {
 	paneId: string;
 	path: MosaicBranch[];
 	tabId: string;
-	workspaceId: string;
 	splitPaneAuto: (
 		tabId: string,
 		sourcePaneId: string,
@@ -46,7 +44,6 @@ export function TabPane({
 	paneId,
 	path,
 	tabId,
-	workspaceId,
 	splitPaneAuto,
 	splitPaneHorizontal,
 	splitPaneVertical,
@@ -134,9 +131,7 @@ export function TabPane({
 				onMoveToNewTab={onMoveToNewTab}
 				closeLabel="Close Terminal"
 			>
-				<div ref={terminalContainerRef} className="w-full h-full">
-					<Terminal paneId={paneId} tabId={tabId} workspaceId={workspaceId} />
-				</div>
+				<div ref={terminalContainerRef} className="h-full w-full" />
 			</TabContentContextMenu>
 		</BasePaneWindow>
 	);

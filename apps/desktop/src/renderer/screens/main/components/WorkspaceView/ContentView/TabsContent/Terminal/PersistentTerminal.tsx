@@ -1,0 +1,93 @@
+import {
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
+import { createPortal } from "react-dom";
+import { getPaneRef, subscribePaneRefs } from "renderer/stores/tabs/pane-refs";
+import { Terminal } from "./Terminal";
+import type { TerminalProps } from "./types";
+
+function usePaneHost(paneId: string): HTMLElement | null {
+	return useSyncExternalStore(
+		subscribePaneRefs,
+		() => getPaneRef(paneId),
+		() => null,
+	);
+}
+
+export function PersistentTerminal(props: TerminalProps) {
+	const { paneId } = props;
+	const host = usePaneHost(paneId);
+	const hiddenHostRef = useRef<HTMLDivElement>(null);
+	const [hasBeenVisible, setHasBeenVisible] = useState(false);
+	const [lastKnownSize, setLastKnownSize] = useState({ width: 1, height: 1 });
+
+	useEffect(() => {
+		if (host) {
+			setHasBeenVisible(true);
+		}
+	}, [host]);
+
+	useLayoutEffect(() => {
+		if (!host) return;
+
+		const updateSize = () => {
+			const rect = host.getBoundingClientRect();
+			const width = Math.max(1, Math.round(rect.width));
+			const height = Math.max(1, Math.round(rect.height));
+			setLastKnownSize((current) => {
+				if (current.width === width && current.height === height) {
+					return current;
+				}
+				return { width, height };
+			});
+		};
+
+		updateSize();
+
+		const resizeObserver = new ResizeObserver(updateSize);
+		resizeObserver.observe(host);
+
+		return () => {
+			resizeObserver.disconnect();
+		};
+	}, [host]);
+
+	if (!hasBeenVisible) {
+		return host
+			? createPortal(<Terminal {...props} isVisible />, host, paneId)
+			: null;
+	}
+
+	const hiddenHost = (
+		<div
+			ref={hiddenHostRef}
+			aria-hidden
+			className="pointer-events-none fixed top-0 overflow-hidden"
+			style={{
+				left: "-200vw",
+				width: lastKnownSize.width,
+				height: lastKnownSize.height,
+				visibility: "hidden",
+			}}
+		/>
+	);
+
+	const target = host ?? hiddenHostRef.current;
+
+	return (
+		<>
+			{hiddenHost}
+			{target
+				? createPortal(
+						<Terminal {...props} isVisible={!!host} />,
+						target,
+						paneId,
+					)
+				: null}
+		</>
+	);
+}
