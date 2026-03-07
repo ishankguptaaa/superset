@@ -2,6 +2,7 @@ import type { UseNavigateResult } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { useDebouncedValue } from "renderer/hooks/useDebouncedValue";
 import { electronTrpc } from "renderer/lib/electron-trpc";
+import { getWorkspaceDisplayName } from "renderer/lib/getWorkspaceDisplayName";
 import { navigateToWorkspace } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
 import { useFileSearch } from "renderer/screens/main/components/WorkspaceView/RightSidebar/FilesView/hooks/useFileSearch/useFileSearch";
 import {
@@ -75,12 +76,11 @@ export function useCommandPalette({
 					result.push({
 						rootPath: ws.worktreePath,
 						workspaceId: ws.id,
-						workspaceName: [
+						workspaceName: getWorkspaceDisplayName(
+							ws.name,
+							ws.type,
 							group.project.name,
-							ws.type === "branch" ? "local" : ws.name,
-						]
-							.filter(Boolean)
-							.join(" - "),
+						),
 					});
 				}
 			};

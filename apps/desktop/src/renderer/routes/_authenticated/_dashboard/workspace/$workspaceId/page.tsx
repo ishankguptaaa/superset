@@ -2,6 +2,7 @@ import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo } from "react";
 import { useFileOpenMode } from "renderer/hooks/useFileOpenMode";
 import { electronTrpc } from "renderer/lib/electron-trpc";
+import { getWorkspaceDisplayName } from "renderer/lib/getWorkspaceDisplayName";
 import { electronTrpcClient as trpcClient } from "renderer/lib/trpc-client";
 import { usePresets } from "renderer/react-query/presets";
 import type { WorkspaceSearchParams } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
@@ -624,12 +625,11 @@ function WorkspacePage() {
 				onScopeChange={commandPalette.setScope}
 				workspaceName={
 					workspace
-						? [
+						? getWorkspaceDisplayName(
+								workspace.name,
+								workspace.type,
 								workspace.project?.name,
-								workspace.type === "branch" ? "local" : workspace.name,
-							]
-								.filter(Boolean)
-								.join(" - ")
+							)
 						: undefined
 				}
 			/>
