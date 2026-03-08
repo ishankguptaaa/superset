@@ -104,33 +104,6 @@ jobs:
           SUPERSET_WORKSPACE_NAME: superset
         run: bun run compile:app
 
-      - name: Install cross-arch native platform packages
-        if: matrix.arch == 'x64'
-        working-directory: apps/desktop
-        run: |
-          # When cross-compiling for x64 on an arm64 runner, Bun only installs
-          # arm64 platform-specific packages. We need to manually fetch the x64
-          # variants for native modules that ship pre-built binaries.
-          # We download and extract directly to avoid modifying package.json/bun.lock.
-          install_npm_pkg() {
-            local pkg_name=$1 version=$2 dest=$3
-            local tarball_name=$(echo "$pkg_name" | sed 's/@//;s/\//-/')
-            local url="https://registry.npmjs.org/${pkg_name}/-/${tarball_name}-${version}.tgz"
-            echo "Fetching ${pkg_name}@${version}"
-            mkdir -p "$dest"
-            curl -sL "$url" | tar xz -C "$dest" --strip-components=1
-          }
-
-          # ast-grep x64 platform package
-          AST_GREP_VERSION=$(node -p "require('./node_modules/@ast-grep/napi/package.json').optionalDependencies['@ast-grep/napi-darwin-x64']")
-          install_npm_pkg "@ast-grep/napi-darwin-x64" "$AST_GREP_VERSION" "node_modules/@ast-grep/napi-darwin-x64"
-
-          # libsql x64 platform package
-          LIBSQL_VERSION=$(node -p "try{require('./node_modules/libsql/package.json').optionalDependencies['@libsql/darwin-x64']}catch(e){''}")
-          if [ -n "$LIBSQL_VERSION" ]; then
-            install_npm_pkg "@libsql/darwin-x64" "$LIBSQL_VERSION" "node_modules/@libsql/darwin-x64"
-          fi
-
       - name: Build Electron app
         working-directory: apps/desktop
         env:
@@ -139,6 +112,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TARGET_ARCH: ${{ matrix.arch }}
         run: bun run package -- --publish never --config ${{ inputs.electron_builder_config }} --${{ matrix.arch }}
 
       - name: Verify app-update.yml exists
