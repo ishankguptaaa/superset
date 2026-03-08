@@ -8,7 +8,7 @@
  * workspace was on a different branch than the one requested, making it
  * impossible to switch the branch workspace via the UI.
  */
-import { beforeAll, describe, expect, mock, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 // ─── Mock factories ────────────────────────────────────────────────────────────
 
@@ -197,6 +197,17 @@ beforeAll(async () => {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("createBranchWorkspace — branch switching (issue #2252)", () => {
+	beforeEach(() => {
+		mockGetBranchWorkspace.mockReset();
+		mockTouchWorkspace.mockClear();
+		mockSetLastActiveWorkspace.mockClear();
+		mockActivateProject.mockClear();
+		mockSafeCheckoutBranch.mockReset();
+		mockGetCurrentBranch.mockReset();
+		mockGetCurrentBranch.mockResolvedValue("main");
+		storedWorkspaceBranch = "main";
+	});
+
 	test("succeeds when no existing branch workspace exists", async () => {
 		mockGetBranchWorkspace.mockReturnValue(undefined);
 		mockSafeCheckoutBranch.mockResolvedValue(undefined);
@@ -282,5 +293,7 @@ describe("createBranchWorkspace — branch switching (issue #2252)", () => {
 			"/tmp/repo",
 			"feature-x",
 		);
+		// The branch update must be persisted to the database
+		expect(storedWorkspaceBranch).toBe("feature-x");
 	});
 });
