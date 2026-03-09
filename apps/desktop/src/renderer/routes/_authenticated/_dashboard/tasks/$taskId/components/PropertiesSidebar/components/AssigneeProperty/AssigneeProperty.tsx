@@ -27,7 +27,7 @@ export function AssigneeProperty({ task }: AssigneePropertyProps) {
 	const users = useMemo(() => allUsers || [], [allUsers]);
 
 	const handleSelectUser = (userId: string | null) => {
-		if (userId === task.assigneeId) {
+		if (userId === task.assigneeId && !task.assigneeExternalId) {
 			setOpen(false);
 			return;
 		}

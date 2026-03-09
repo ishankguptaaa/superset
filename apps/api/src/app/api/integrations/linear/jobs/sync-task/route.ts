@@ -57,6 +57,25 @@ async function findLinearState(
 	return match?.id;
 }
 
+async function resolveLinearAssigneeId(
+	client: LinearClient,
+	userId: string,
+): Promise<string | undefined> {
+	const assigneeUser = await db.query.users.findFirst({
+		where: eq(users.id, userId),
+	});
+	if (!assigneeUser?.email) return undefined;
+
+	const linearUsers = await client.users({
+		filter: { email: { eq: assigneeUser.email } },
+	});
+	const linearUser = linearUsers.nodes[0];
+	if (linearUsers.nodes.length === 1 && linearUser) {
+		return linearUser.id;
+	}
+	return undefined;
+}
+
 async function syncTaskToLinear(
 	task: SelectTask,
 	teamId: string,
@@ -87,22 +106,12 @@ async function syncTaskToLinear(
 		if (task.externalProvider === "linear" && task.externalId) {
 			// Resolve assignee for Linear
 			let linearAssigneeId: string | null | undefined; // undefined = don't change
-			if (task.assigneeId === null) {
-				// Explicitly unassign
+			if (task.assigneeId === null && !task.assigneeExternalId) {
+				// Explicitly unassign (only when no external assignee exists)
 				linearAssigneeId = null;
 			} else if (task.assigneeId) {
-				const assigneeUser = await db.query.users.findFirst({
-					where: eq(users.id, task.assigneeId),
-				});
-				if (assigneeUser?.email) {
-					const linearUsers = await client.users({
-						filter: { email: { eq: assigneeUser.email } },
-					});
-					const linearUser = linearUsers.nodes[0];
-					if (linearUsers.nodes.length === 1 && linearUser) {
-						linearAssigneeId = linearUser.id;
-					}
-				}
+				linearAssigneeId =
+					(await resolveLinearAssigneeId(client, task.assigneeId)) ?? undefined;
 			}
 
 			const result = await client.updateIssue(task.externalId, {
@@ -141,21 +150,9 @@ async function syncTaskToLinear(
 		}
 
 		// Resolve assignee for Linear (create)
-		let createAssigneeId: string | undefined;
-		if (task.assigneeId) {
-			const assigneeUser = await db.query.users.findFirst({
-				where: eq(users.id, task.assigneeId),
-			});
-			if (assigneeUser?.email) {
-				const linearUsers = await client.users({
-					filter: { email: { eq: assigneeUser.email } },
-				});
-				const linearUser = linearUsers.nodes[0];
-				if (linearUsers.nodes.length === 1 && linearUser) {
-					createAssigneeId = linearUser.id;
-				}
-			}
-		}
+		const createAssigneeId = task.assigneeId
+			? await resolveLinearAssigneeId(client, task.assigneeId)
+			: undefined;
 
 		const result = await client.createIssue({
 			teamId,
