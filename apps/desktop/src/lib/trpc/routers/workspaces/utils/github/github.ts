@@ -4,6 +4,8 @@ import type { CheckItem, GitHubStatus } from "@superset/local-db";
 import { branchExistsOnRemote } from "../git";
 import { execWithShellEnv } from "../shell-env";
 import {
+	GHDeploymentSchema,
+	GHDeploymentStatusSchema,
 	type GHPRResponse,
 	GHPRResponseSchema,
 	GHRepoResponseSchema,
@@ -40,9 +42,17 @@ export async function fetchGitHubPRStatus(
 		);
 		const branchName = branchOutput.trim();
 
-		const [branchCheck, prInfo] = await Promise.all([
+		const { stdout: shaOutput } = await execFileAsync(
+			"git",
+			["rev-parse", "HEAD"],
+			{ cwd: worktreePath },
+		);
+		const headSha = shaOutput.trim();
+
+		const [branchCheck, prInfo, previewUrl] = await Promise.all([
 			branchExistsOnRemote(worktreePath, branchName),
 			getPRForBranch(worktreePath, repoContext),
+			fetchPreviewDeploymentUrl(worktreePath, headSha, repoContext),
 		]);
 
 		const result: GitHubStatus = {
@@ -51,6 +61,7 @@ export async function fetchGitHubPRStatus(
 			upstreamUrl: repoContext.upstreamUrl,
 			isFork: repoContext.isFork,
 			branchExistsOnRemote: branchCheck.status === "exists",
+			previewUrl: previewUrl ?? undefined,
 			lastRefreshed: Date.now(),
 		};
 
@@ -459,6 +470,68 @@ function parseChecks(rollup: GHPRResponse["statusCheckRollup"]): CheckItem[] {
 
 		return { name, status, url };
 	});
+}
+
+/**
+ * Fetches the preview deployment URL for a commit using the GitHub Deployments API.
+ * Queries by SHA since providers like Vercel use the commit SHA as the deployment ref.
+ * Returns the environment_url from the most recent successful deployment, or null.
+ */
+async function fetchPreviewDeploymentUrl(
+	worktreePath: string,
+	headSha: string,
+	repoContext: RepoContext,
+): Promise<string | null> {
+	try {
+		// For forks, query upstream repo's deployments
+		const targetUrl = repoContext.isFork
+			? repoContext.upstreamUrl
+			: repoContext.repoUrl;
+		const nwo = extractNwoFromUrl(targetUrl);
+		if (!nwo) return null;
+
+		const { stdout: deploymentsOutput } = await execWithShellEnv(
+			"gh",
+			["api", `repos/${nwo}/deployments?sha=${headSha}&per_page=5`],
+			{ cwd: worktreePath },
+		);
+
+		const rawDeployments: unknown = JSON.parse(deploymentsOutput.trim());
+		if (!Array.isArray(rawDeployments) || rawDeployments.length === 0) {
+			return null;
+		}
+
+		for (const rawDep of rawDeployments) {
+			const depResult = GHDeploymentSchema.safeParse(rawDep);
+			if (!depResult.success) continue;
+
+			const { stdout: statusOutput } = await execWithShellEnv(
+				"gh",
+				[
+					"api",
+					`repos/${nwo}/deployments/${depResult.data.id}/statuses?per_page=1`,
+				],
+				{ cwd: worktreePath },
+			);
+
+			const rawStatuses: unknown = JSON.parse(statusOutput.trim());
+			if (!Array.isArray(rawStatuses) || rawStatuses.length === 0) continue;
+
+			const statusResult = GHDeploymentStatusSchema.safeParse(rawStatuses[0]);
+			if (!statusResult.success) continue;
+
+			if (
+				statusResult.data.state === "success" &&
+				statusResult.data.environment_url
+			) {
+				return statusResult.data.environment_url;
+			}
+		}
+
+		return null;
+	} catch {
+		return null;
+	}
 }
 
 function computeChecksStatus(

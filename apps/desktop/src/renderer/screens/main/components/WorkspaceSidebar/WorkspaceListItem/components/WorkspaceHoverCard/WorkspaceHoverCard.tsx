@@ -4,6 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { FaGithub } from "react-icons/fa";
 import {
 	LuExternalLink,
+	LuGlobe,
 	LuLoaderCircle,
 	LuTriangleAlert,
 } from "react-icons/lu";
@@ -35,6 +36,7 @@ export function WorkspaceHoverCardContent({
 		pr,
 		repoUrl,
 		branchExistsOnRemote,
+		previewUrl,
 		isLoading: isLoadingGithub,
 	} = usePRStatus({ workspaceId });
 
@@ -166,6 +168,19 @@ export function WorkspaceHoverCardContent({
 							)}
 						</a>
 					</Button>
+					{previewUrl && (
+						<Button
+							variant="outline"
+							size="sm"
+							className="w-full h-7 text-xs gap-1.5"
+							asChild
+						>
+							<a href={previewUrl} target="_blank" rel="noopener noreferrer">
+								<LuGlobe className="size-3" strokeWidth={STROKE_WIDTH} />
+								Open Preview
+							</a>
+						</Button>
+					)}
 				</div>
 			) : repoUrl ? (
 				<div className="text-xs text-muted-foreground pt-2 border-t border-border">
