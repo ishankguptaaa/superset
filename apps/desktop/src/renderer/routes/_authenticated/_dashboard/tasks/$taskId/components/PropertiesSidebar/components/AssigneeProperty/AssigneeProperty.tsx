@@ -77,11 +77,9 @@ export function AssigneeProperty({ task }: AssigneePropertyProps) {
 									{task.assigneeDisplayName?.charAt(0).toUpperCase() ?? "?"}
 								</div>
 							)}
-							<span className="text-sm text-muted-foreground">
-								{task.assigneeDisplayName || "External"}
-							</span>
-							<span className="text-xs text-muted-foreground/60 ml-auto">
-								External
+							<span className="text-sm">
+								{task.assigneeDisplayName || "External"}{" "}
+								<span className="text-muted-foreground">(external)</span>
 							</span>
 						</>
 					) : (
