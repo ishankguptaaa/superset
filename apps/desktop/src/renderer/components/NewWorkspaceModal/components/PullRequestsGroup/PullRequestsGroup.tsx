@@ -40,14 +40,14 @@ export function PullRequestsGroup({
 		const query = draft.pullRequestsQuery.trim();
 		if (!query) return null;
 		const match = query.match(
-			/(?:https?:\/\/)?github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/,
+			/^(?:https?:\/\/)?github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)\/?$/,
 		);
 		if (!match) return null;
 		return {
 			owner: match[1],
 			repo: match[2],
 			number: Number.parseInt(match[3], 10),
-			url: query.startsWith("http") ? query : `https://${query}`,
+			url: `https://github.com/${match[1]}/${match[2]}/pull/${match[3]}`,
 		};
 	}, [draft.pullRequestsQuery]);
 
