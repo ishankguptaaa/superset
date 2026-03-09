@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { projects, workspaces, worktrees } from "@superset/local-db";
@@ -30,20 +29,41 @@ async function writeTaskFile(
 	fileName: string,
 	content: string,
 ): Promise<string> {
+	const baseName = path.basename(fileName);
+	if (!baseName || baseName !== fileName || fileName.includes("..")) {
+		throw new Error(`Invalid task file name: ${fileName}`);
+	}
+
 	const dir = path.join(workspacePath, ".superset");
 	await mkdir(dir, { recursive: true });
 
-	let finalName = fileName;
-	let attempt = 1;
-	while (existsSync(path.join(dir, finalName))) {
-		attempt++;
-		const ext = path.extname(fileName);
-		const base = path.basename(fileName, ext);
-		finalName = `${base}-${attempt}${ext}`;
+	const ext = path.extname(baseName);
+	const base = path.basename(baseName, ext);
+	let finalName = baseName;
+	let attempt = 0;
+
+	while (attempt < 100) {
+		try {
+			await writeFile(path.join(dir, finalName), content, {
+				encoding: "utf-8",
+				flag: "wx",
+			});
+			return finalName;
+		} catch (err: unknown) {
+			if (
+				err instanceof Error &&
+				"code" in err &&
+				(err as NodeJS.ErrnoException).code === "EEXIST"
+			) {
+				attempt++;
+				finalName = `${base}-${attempt}${ext}`;
+				continue;
+			}
+			throw err;
+		}
 	}
 
-	await writeFile(path.join(dir, finalName), content, "utf-8");
-	return finalName;
+	throw new Error(`Could not write task file after ${attempt} attempts`);
 }
 
 const SAFE_ID = z

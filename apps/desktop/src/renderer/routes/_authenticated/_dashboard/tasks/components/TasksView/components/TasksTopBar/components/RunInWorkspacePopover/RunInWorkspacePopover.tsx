@@ -389,11 +389,14 @@ export function RunInWorkspacePopover({
 					</Select>
 
 					<div className="flex items-center justify-between px-1">
-						<Label htmlFor="auto-run-toggle" className="text-xs font-normal">
+						<Label
+							htmlFor="batch-auto-run-toggle"
+							className="text-xs font-normal"
+						>
 							Auto-run command
 						</Label>
 						<Switch
-							id="auto-run-toggle"
+							id="batch-auto-run-toggle"
 							checked={autoRun}
 							onCheckedChange={(value) => {
 								setAutoRun(value);
