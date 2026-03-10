@@ -5,7 +5,7 @@ import {
 	usersSlackUsers,
 } from "@superset/db/schema";
 import { and, eq } from "drizzle-orm";
-import { track } from "@/lib/analytics";
+import { posthog } from "@/lib/analytics";
 import { generateConnectUrl } from "../utils/generate-connect-url";
 import {
 	formatErrorForSlack,
@@ -95,10 +95,14 @@ export async function processSlackMention({
 	]);
 
 	if (!activeSubscription) {
-		track(event.user, "slack_gated", {
-			reason: "no_subscription",
-			team_id: teamId,
-			$process_person_profile: false,
+		posthog.capture({
+			distinctId: event.user,
+			event: "slack_gated",
+			properties: {
+				reason: "no_subscription",
+				team_id: teamId,
+				$process_person_profile: false,
+			},
 		});
 		await slack.chat.postMessage({
 			channel: event.channel,
@@ -130,10 +134,14 @@ export async function processSlackMention({
 
 	if (!slackUserLink) {
 		if (!event.user) return;
-		track(event.user, "slack_gated", {
-			reason: "no_linked_account",
-			team_id: teamId,
-			$process_person_profile: false,
+		posthog.capture({
+			distinctId: event.user,
+			event: "slack_gated",
+			properties: {
+				reason: "no_linked_account",
+				team_id: teamId,
+				$process_person_profile: false,
+			},
 		});
 		const connectUrl = generateConnectUrl({
 			slackUserId: event.user,
@@ -250,11 +258,15 @@ export async function processSlackMention({
 			});
 		}
 
-		track(slackUserLink.userId, "slack_message_sent", {
-			type: "mention",
-			model: slackUserLink.modelPreference ?? undefined,
-			tools_used: result.actions.map((a) => a.type),
-			actions: result.actions.map((a) => a.type),
+		posthog.capture({
+			distinctId: slackUserLink.userId,
+			event: "slack_message_sent",
+			properties: {
+				type: "mention",
+				model: slackUserLink.modelPreference ?? undefined,
+				tools_used: result.actions.map((a) => a.type),
+				actions: result.actions.map((a) => a.type),
+			},
 		});
 
 		// Post side effects as a separate message

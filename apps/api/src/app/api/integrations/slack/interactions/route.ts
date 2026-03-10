@@ -1,7 +1,7 @@
 import { db } from "@superset/db/client";
 import { usersSlackUsers } from "@superset/db/schema";
 import { and, eq } from "drizzle-orm";
-import { track } from "@/lib/analytics";
+import { posthog } from "@/lib/analytics";
 import { DEFAULT_SLACK_MODEL } from "../constants";
 import { processAppHomeOpened } from "../events/process-app-home-opened";
 import { verifySlackSignature } from "../verify-signature";
@@ -85,8 +85,10 @@ async function handleModelSelect({
 		.set({ modelPreference: selectedModel })
 		.where(eq(usersSlackUsers.id, existing.id));
 
-	track(existing.userId, "slack_model_changed", {
-		model: selectedModel,
+	posthog.capture({
+		distinctId: existing.userId,
+		event: "slack_model_changed",
+		properties: { model: selectedModel },
 	});
 }
 
@@ -115,8 +117,10 @@ async function handleDisconnectAccount({
 		);
 
 	if (existing) {
-		track(existing.userId, "slack_disconnected", {
-			team_id: teamId,
+		posthog.capture({
+			distinctId: existing.userId,
+			event: "slack_disconnected",
+			properties: { team_id: teamId },
 		});
 	}
 
