@@ -5,7 +5,15 @@ import { join } from "node:path";
 
 export async function writeTempAskpass(token: string): Promise<string> {
 	const filePath = join(tmpdir(), `git-askpass-${randomUUID()}.sh`);
-	await writeFile(filePath, `#!/bin/sh\necho "${token}"\n`);
+	// GIT_ASKPASS is called with a prompt arg: "Username for ..." or "Password for ..."
+	// For GitHub App tokens: username = x-access-token, password = the token
+	const script = `#!/bin/sh
+case "$1" in
+  Username*) echo "x-access-token" ;;
+  *) echo "${token}" ;;
+esac
+`;
+	await writeFile(filePath, script);
 	await chmod(filePath, 0o700);
 	return filePath;
 }
