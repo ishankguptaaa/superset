@@ -1,11 +1,34 @@
 import { dbWs } from "@superset/db/client";
-import { v2Projects } from "@superset/db/schema";
+import { type SelectV2Project, v2Projects } from "@superset/db/schema";
 import type { TRPCRouterRecord } from "@trpc/server";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../../trpc";
 import { verifyOrgAdmin, verifyOrgMembership } from "../integration/utils";
+
+function isUniqueViolation(
+	error: unknown,
+	constraintName?: string,
+): error is { code: string; constraint?: string; constraint_name?: string } {
+	if (
+		typeof error !== "object" ||
+		error === null ||
+		!("code" in error) ||
+		error.code !== "23505"
+	) {
+		return false;
+	}
+
+	if (!constraintName) {
+		return true;
+	}
+
+	return (
+		("constraint" in error && error.constraint === constraintName) ||
+		("constraint_name" in error && error.constraint_name === constraintName)
+	);
+}
 
 export const projectsV2Router = {
 	create: protectedProcedure
@@ -20,15 +43,29 @@ export const projectsV2Router = {
 		.mutation(async ({ ctx, input }) => {
 			await verifyOrgMembership(ctx.session.user.id, input.organizationId);
 
-			const [project] = await dbWs
-				.insert(v2Projects)
-				.values({
-					organizationId: input.organizationId,
-					name: input.name,
-					slug: input.slug,
-					githubRepositoryId: input.githubRepositoryId,
-				})
-				.returning();
+			let project: SelectV2Project | undefined;
+
+			try {
+				[project] = await dbWs
+					.insert(v2Projects)
+					.values({
+						organizationId: input.organizationId,
+						name: input.name,
+						slug: input.slug,
+						githubRepositoryId: input.githubRepositoryId,
+					})
+					.returning();
+			} catch (error) {
+				if (isUniqueViolation(error, "v2_projects_org_slug_unique")) {
+					throw new TRPCError({
+						code: "CONFLICT",
+						message:
+							"A V2 project with this slug already exists in the organization",
+					});
+				}
+
+				throw error;
+			}
 
 			if (!project) {
 				throw new TRPCError({

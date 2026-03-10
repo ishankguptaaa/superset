@@ -41,36 +41,55 @@ async function resolveDeviceId(
 		return existing.id;
 	}
 
-	const [device] = await dbWs
-		.insert(v2Devices)
-		.values({
-			organizationId: input.organizationId,
-			name: user.name ? `${user.name}'s host` : "This device",
-			type: "host",
-			createdByUserId: user.id,
-		})
-		.returning({ id: v2Devices.id });
+	const [existingDevice] = await dbWs
+		.select({ id: v2Devices.id })
+		.from(v2UsersDevices)
+		.innerJoin(v2Devices, eq(v2UsersDevices.deviceId, v2Devices.id))
+		.where(
+			and(
+				eq(v2UsersDevices.organizationId, input.organizationId),
+				eq(v2UsersDevices.userId, user.id),
+				eq(v2Devices.organizationId, input.organizationId),
+			),
+		)
+		.limit(1);
 
-	if (!device) {
-		throw new TRPCError({
-			code: "INTERNAL_SERVER_ERROR",
-			message: "Failed to create V2 device",
-		});
+	if (existingDevice) {
+		return existingDevice.id;
 	}
 
-	await dbWs.insert(v2UsersDevices).values({
-		organizationId: input.organizationId,
-		userId: user.id,
-		deviceId: device.id,
-		role: "owner",
-	});
+	return dbWs.transaction(async (tx) => {
+		const [device] = await tx
+			.insert(v2Devices)
+			.values({
+				organizationId: input.organizationId,
+				name: user.name ? `${user.name}'s host` : "This device",
+				type: "host",
+				createdByUserId: user.id,
+			})
+			.returning({ id: v2Devices.id });
 
-	await dbWs.insert(v2DevicePresence).values({
-		deviceId: device.id,
-		organizationId: input.organizationId,
-	});
+		if (!device) {
+			throw new TRPCError({
+				code: "INTERNAL_SERVER_ERROR",
+				message: "Failed to create V2 device",
+			});
+		}
 
-	return device.id;
+		await tx.insert(v2UsersDevices).values({
+			organizationId: input.organizationId,
+			userId: user.id,
+			deviceId: device.id,
+			role: "owner",
+		});
+
+		await tx.insert(v2DevicePresence).values({
+			deviceId: device.id,
+			organizationId: input.organizationId,
+		});
+
+		return device.id;
+	});
 }
 
 export const workspacesV2Router = {

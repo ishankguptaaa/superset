@@ -385,8 +385,10 @@ export const v2Projects = pgTable(
 			() => githubRepositories.id,
 			{ onDelete: "set null" },
 		),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		updatedAt: timestamp("updated_at")
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.notNull()
 			.defaultNow()
 			.$onUpdate(() => new Date()),
