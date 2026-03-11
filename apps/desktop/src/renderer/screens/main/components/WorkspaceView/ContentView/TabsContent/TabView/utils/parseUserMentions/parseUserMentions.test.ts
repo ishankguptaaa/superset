@@ -173,6 +173,18 @@ describe("parseUserMentions", () => {
 			]);
 		});
 
+		it("strips trailing quotes from mentions inside quoted strings", () => {
+			expect(parseUserMentions('see "@task:SUPER-123" for details')).toEqual([
+				{ type: "text", value: 'see "' },
+				{
+					type: "task-mention",
+					raw: "@task:SUPER-123",
+					slug: "SUPER-123",
+				},
+				{ type: "text", value: '" for details' },
+			]);
+		});
+
 		it("parses task mention at end of text", () => {
 			expect(parseUserMentions("working on @task:FEAT-55")).toEqual([
 				{ type: "text", value: "working on " },

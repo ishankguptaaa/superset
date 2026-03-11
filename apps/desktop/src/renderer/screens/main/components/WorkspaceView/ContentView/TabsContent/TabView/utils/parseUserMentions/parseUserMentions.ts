@@ -1,6 +1,6 @@
 const MENTION_REGEX = /(^|[\s([{"'`])@([^\s@]+)/g;
 
-const TRAILING_PUNCTUATION = /[.,!?;:)\]}]+$/;
+const TRAILING_PUNCTUATION = /[.,!?;:)\]}'"`]+$/;
 
 export type UserMentionSegment =
 	| { type: "text"; value: string }
