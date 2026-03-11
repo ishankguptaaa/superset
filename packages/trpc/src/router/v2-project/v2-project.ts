@@ -125,6 +125,16 @@ export const v2ProjectRouter = {
 			}
 
 			const { id, ...data } = input;
+			if (
+				Object.keys(data).every(
+					(k) => data[k as keyof typeof data] === undefined,
+				)
+			) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "No fields to update",
+				});
+			}
 			const [updated] = await dbWs
 				.update(v2Projects)
 				.set(data)
@@ -135,6 +145,12 @@ export const v2ProjectRouter = {
 					),
 				)
 				.returning();
+			if (!updated) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Project not found",
+				});
+			}
 			return updated;
 		}),
 

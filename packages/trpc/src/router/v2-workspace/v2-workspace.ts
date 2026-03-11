@@ -13,7 +13,7 @@ export const v2WorkspaceRouter = {
 			z.object({
 				projectId: z.string().uuid(),
 				name: z.string().min(1),
-				branch: z.string().optional(),
+				branch: z.string().min(1).optional(),
 				deviceId: z.string().uuid().optional(),
 			}),
 		)
@@ -74,7 +74,7 @@ export const v2WorkspaceRouter = {
 			z.object({
 				id: z.string().uuid(),
 				name: z.string().min(1).optional(),
-				branch: z.string().optional(),
+				branch: z.string().min(1).optional(),
 				deviceId: z.string().uuid().nullish(),
 			}),
 		)
@@ -104,6 +104,16 @@ export const v2WorkspaceRouter = {
 			}
 
 			const { id, ...data } = input;
+			if (
+				Object.keys(data).every(
+					(k) => data[k as keyof typeof data] === undefined,
+				)
+			) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "No fields to update",
+				});
+			}
 			const [updated] = await dbWs
 				.update(v2Workspaces)
 				.set(data)
@@ -114,6 +124,12 @@ export const v2WorkspaceRouter = {
 					),
 				)
 				.returning();
+			if (!updated) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Workspace not found",
+				});
+			}
 			return updated;
 		}),
 
