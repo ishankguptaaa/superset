@@ -33,8 +33,8 @@
 		"@superset/trpc": "workspace:*",
 		"@trpc/client": "^11.7.1",
 		"@trpc/server": "^11.7.1",
-		"better-sqlite3": "^11.8.1",
-		"drizzle-orm": "^0.44.2",
+		"better-sqlite3": "12.6.2",
+		"drizzle-orm": "0.45.1",
 		"hono": "^4.8.5",
 		"simple-git": "^3.30.0",
 		"superjson": "^2.2.5",
@@ -44,7 +44,7 @@
 		"@superset/typescript": "workspace:*",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^24.9.1",
-		"drizzle-kit": "^0.31.4",
+		"drizzle-kit": "0.31.8",
 		"typescript": "^5.9.3"
 	}
 }
