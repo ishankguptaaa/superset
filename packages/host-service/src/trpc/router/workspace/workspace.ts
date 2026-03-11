@@ -41,7 +41,7 @@ export const workspaceRouter = router({
 				const homeDir = process.env.HOME || process.env.USERPROFILE || "/tmp";
 				const repoPath = join(homeDir, ".superset", "repos", input.projectId);
 
-				const git = await ctx.git(repoPath, cloudProject.repoCloneUrl);
+				const git = await ctx.git(repoPath);
 				await git.clone(cloudProject.repoCloneUrl, repoPath);
 
 				const inserted = ctx.db

@@ -6,7 +6,4 @@ export interface CredentialProvider {
 	): Promise<{ env: Record<string, string> }>;
 }
 
-export type GitFactory = (
-	path: string,
-	remoteUrl?: string,
-) => Promise<SimpleGit>;
+export type GitFactory = (path: string) => Promise<SimpleGit>;

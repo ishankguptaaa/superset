@@ -3,10 +3,10 @@ import type { CredentialProvider, GitFactory } from "../types";
 import { getRemoteUrl } from "./utils/utils";
 
 export function createGitFactory(provider: CredentialProvider): GitFactory {
-	return async (repoPath: string, remoteUrl?: string) => {
+	return async (repoPath: string) => {
 		const git = simpleGit(repoPath);
-		const resolvedUrl = remoteUrl ?? (await getRemoteUrl(git));
-		const creds = await provider.getCredentials(resolvedUrl);
+		const remoteUrl = await getRemoteUrl(git);
+		const creds = await provider.getCredentials(remoteUrl);
 		return git.env(creds.env);
 	};
 }
