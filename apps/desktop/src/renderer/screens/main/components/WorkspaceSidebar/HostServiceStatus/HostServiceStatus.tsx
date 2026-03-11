@@ -56,7 +56,6 @@ export function HostServiceStatus() {
 	const [cloudLoading, setCloudLoading] = useState(false);
 	const [cloudError, setCloudError] = useState<string | null>(null);
 
-	// V2 Operations state
 	const [v2ProjectId, setV2ProjectId] = useState("");
 	const [v2WorkspaceId, setV2WorkspaceId] = useState("");
 	const [v2Branch, setV2Branch] = useState("main");
@@ -226,7 +225,6 @@ export function HostServiceStatus() {
 						)}
 					</div>
 
-					{/* V2 Operations */}
 					<div className="space-y-3 border-b border-border pb-3">
 						<span className="text-sm font-medium">V2 Operations</span>
 						<div className="flex gap-2">

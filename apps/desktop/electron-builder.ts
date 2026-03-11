@@ -60,7 +60,6 @@ const config: Configuration = {
 			to: "resources/migrations",
 			filter: ["**/*"],
 		},
-		// Host-service SQLite migrations
 		{
 			from: "dist/resources/host-migrations",
 			to: "resources/host-migrations",

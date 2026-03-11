@@ -329,7 +329,6 @@ export const sessionHostsRelations = relations(sessionHosts, ({ one }) => ({
 	}),
 }));
 
-// V2 relations
 export const v2ProjectsRelations = relations(v2Projects, ({ one, many }) => ({
 	organization: one(organizations, {
 		fields: [v2Projects.organizationId],

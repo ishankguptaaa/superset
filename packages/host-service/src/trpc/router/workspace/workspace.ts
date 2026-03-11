@@ -22,12 +22,10 @@ export const workspaceRouter = router({
 				});
 			}
 
-			// Check if project exists locally
 			let localProject = ctx.db.query.projects
 				.findFirst({ where: eq(projects.id, input.projectId) })
 				.sync();
 
-			// If not found locally, fetch from cloud and clone
 			if (!localProject) {
 				const cloudProject = await ctx.api.v2Project.get.query({
 					id: input.projectId,
@@ -62,7 +60,6 @@ export const workspaceRouter = router({
 				});
 			}
 
-			// Create worktree
 			const worktreePath = join(
 				localProject.repoPath,
 				".worktrees",
@@ -72,14 +69,12 @@ export const workspaceRouter = router({
 			const git = await ctx.git(localProject.repoPath);
 			await git.raw(["worktree", "add", worktreePath, input.branch]);
 
-			// Create cloud workspace (orgId implicit from auth session)
 			const cloudRow = await ctx.api.v2Workspace.create.mutate({
 				projectId: input.projectId,
 				name: input.name,
 				branch: input.branch,
 			});
 
-			// Track locally
 			if (cloudRow) {
 				ctx.db
 					.insert(workspaces)
@@ -105,7 +100,6 @@ export const workspaceRouter = router({
 				});
 			}
 
-			// Look up local workspace
 			const localWorkspace = ctx.db.query.workspaces
 				.findFirst({ where: eq(workspaces.id, input.id) })
 				.sync();
@@ -119,16 +113,12 @@ export const workspaceRouter = router({
 					try {
 						const git = await ctx.git(localProject.repoPath);
 						await git.raw(["worktree", "remove", localWorkspace.worktreePath]);
-					} catch {
-						// Best-effort worktree removal
-					}
+					} catch {}
 				}
 			}
 
-			// Delete from cloud (orgId implicit from auth session)
 			await ctx.api.v2Workspace.delete.mutate({ id: input.id });
 
-			// Delete local row
 			ctx.db.delete(workspaces).where(eq(workspaces.id, input.id)).run();
 
 			return { success: true };
