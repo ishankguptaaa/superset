@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { withSentryConfig } from "@sentry/nextjs";
+import { securityHeaders } from "@superset/shared/security-headers";
 import { config as dotenvConfig } from "dotenv";
 import type { NextConfig } from "next";
 
@@ -40,6 +41,15 @@ const config: NextConfig = {
 				destination: "https://us.i.posthog.com/decide",
 			},
 		];
+	},
+
+	async headers() {
+		return securityHeaders({
+			csp: {
+				"connect-src": ["wss:", "ws:"],
+				"frame-src": ["'self'"],
+			},
+		});
 	},
 
 	skipTrailingSlashRedirect: true,

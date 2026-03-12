@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { withSentryConfig } from "@sentry/nextjs";
+import { securityHeaders } from "@superset/shared/security-headers";
 import { config as dotenvConfig } from "dotenv";
 import type { NextConfig } from "next";
 
@@ -22,6 +23,10 @@ const config: NextConfig = {
 				hostname: "*.public.blob.vercel-storage.com",
 			},
 		],
+	},
+
+	async headers() {
+		return securityHeaders();
 	},
 };
 

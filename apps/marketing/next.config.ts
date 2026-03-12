@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { withSentryConfig } from "@sentry/nextjs";
+import { securityHeaders } from "@superset/shared/security-headers";
 import { config as dotenvConfig } from "dotenv";
 import type { NextConfig } from "next";
 
@@ -67,6 +68,15 @@ const config: NextConfig = {
 				permanent: false,
 			},
 		];
+	},
+
+	async headers() {
+		return securityHeaders({
+			csp: {
+				"img-src": ["https://unavatar.io"],
+				"frame-src": ["https://www.youtube.com"],
+			},
+		});
 	},
 
 	skipTrailingSlashRedirect: true,

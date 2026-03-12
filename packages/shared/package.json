@@ -31,6 +31,10 @@
 		"./claude-command": {
 			"types": "./src/claude-command.ts",
 			"default": "./src/claude-command.ts"
+		},
+		"./security-headers": {
+			"types": "./src/security-headers/index.ts",
+			"default": "./src/security-headers/index.ts"
 		}
 	},
 	"scripts": {

@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { withSentryConfig } from "@sentry/nextjs";
+import { securityHeaders } from "@superset/shared/security-headers";
 import { config as dotenvConfig } from "dotenv";
 import { createMDX } from "fumadocs-mdx/next";
 
@@ -60,6 +61,13 @@ const config = {
 				destination: "https://us.i.posthog.com/decide",
 			},
 		];
+	},
+	async headers() {
+		return securityHeaders({
+			csp: {
+				"frame-src": ["https://www.youtube.com"],
+			},
+		});
 	},
 	skipTrailingSlashRedirect: true,
 };
