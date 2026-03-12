@@ -5,10 +5,10 @@ import {
 	createFileRoute,
 	Navigate,
 	Outlet,
+	useLocation,
 	useNavigate,
 } from "@tanstack/react-router";
-import { useFeatureFlagEnabled } from "posthog-js/react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { DndProvider } from "react-dnd";
 import { HiOutlineWifi } from "react-icons/hi2";
 import { NewWorkspaceModal } from "renderer/components/NewWorkspaceModal";
@@ -24,6 +24,7 @@ import { showWorkspaceAutoNameWarningToast } from "renderer/lib/workspaces/showW
 import { InitGitDialog } from "renderer/react-query/projects/InitGitDialog";
 import { WorkspaceInitEffects } from "renderer/screens/main/components/WorkspaceInitEffects";
 import { useHotkeysSync } from "renderer/stores/hotkeys";
+import { useSettingsStore } from "renderer/stores/settings-state";
 import { useAgentHookListener } from "renderer/stores/tabs/useAgentHookListener";
 import { useWorkspaceInitStore } from "renderer/stores/workspace-init";
 import { MOCK_ORG_ID } from "shared/constants";
@@ -46,6 +47,8 @@ function AuthenticatedLayout() {
 	const hasLocalToken = !!getAuthToken();
 	const isOnline = useOnlineStatus();
 	const navigate = useNavigate();
+	const location = useLocation();
+	const setOriginRoute = useSettingsStore((s) => s.setOriginRoute);
 	const utils = electronTrpc.useUtils();
 	const shownWorkspaceInitWarningsRef = useRef(new Set<string>());
 	const isV2CloudEnabled =
@@ -59,6 +62,12 @@ function AuthenticatedLayout() {
 	useAgentHookListener();
 	useUpdateListener();
 	useHotkeysSync();
+
+	useEffect(() => {
+		if (!location.pathname.startsWith("/settings")) {
+			setOriginRoute(location.pathname);
+		}
+	}, [location.pathname, setOriginRoute]);
 
 	// Workspace initialization progress subscription
 	const updateInitProgress = useWorkspaceInitStore((s) => s.updateProgress);
