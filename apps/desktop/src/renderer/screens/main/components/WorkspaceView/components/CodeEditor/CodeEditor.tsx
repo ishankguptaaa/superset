@@ -291,15 +291,21 @@ export function CodeEditor({
 		const currentValue = view.state.doc.toString();
 		if (currentValue === value) return;
 
+		// try/finally: if dispatch throws (e.g. view destroyed mid-effect), the flag
+		// must still reset — otherwise isExternalUpdateRef stays true forever and
+		// every subsequent user edit is silently dropped by the updateListener guard.
 		isExternalUpdateRef.current = true;
-		view.dispatch({
-			changes: {
-				from: 0,
-				to: view.state.doc.length,
-				insert: value,
-			},
-		});
-		isExternalUpdateRef.current = false;
+		try {
+			view.dispatch({
+				changes: {
+					from: 0,
+					to: view.state.doc.length,
+					insert: value,
+				},
+			});
+		} finally {
+			isExternalUpdateRef.current = false;
+		}
 	}, [value]);
 
 	useEffect(() => {
