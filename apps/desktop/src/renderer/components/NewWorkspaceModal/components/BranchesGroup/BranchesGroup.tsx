@@ -47,17 +47,18 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 		setDisplayLimit(PAGE_SIZE);
 	}
 
-	// Server-side searched + paginated branch query
+	// Server-side searched branch query — use fixed limit so query key stays
+	// stable across pagination (avoids cmdk scroll reset on refetch).
+	// Pagination is done client-side via displayLimit slice.
 	const {
 		data: searchData,
 		isLoading: isSearchLoading,
-		isFetching,
 		isError: isSearchError,
 	} = electronTrpc.projects.searchBranches.useQuery(
 		{
 			projectId: projectId ?? "",
 			search: debouncedQuery,
-			limit: displayLimit,
+			limit: 200,
 			offset: 0,
 		},
 		{
@@ -87,7 +88,7 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 	}
 
 	// Combine: prefer searchBranches, fall back to getBranchesLocal with client-side search
-	const effectiveData = useMemo(() => {
+	const allBranchData = useMemo(() => {
 		if (searchData && !isSearchError) return searchData;
 		if (!localBranchData) return undefined;
 		const query = debouncedQuery.trim().toLowerCase();
@@ -97,18 +98,25 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 				)
 			: localBranchData.branches;
 		return {
-			branches: filtered.slice(0, displayLimit),
+			branches: filtered,
 			defaultBranch: localBranchData.defaultBranch,
 			totalCount: filtered.length,
-			hasMore: filtered.length > displayLimit,
 		};
-	}, [
-		searchData,
-		isSearchError,
-		localBranchData,
-		debouncedQuery,
-		displayLimit,
-	]);
+	}, [searchData, isSearchError, localBranchData, debouncedQuery]);
+
+	// Client-side pagination — slicing a stable array keeps existing
+	// CommandItems mounted so cmdk won't reset scroll position.
+	const effectiveData = useMemo(
+		() =>
+			allBranchData
+				? {
+						...allBranchData,
+						branches: allBranchData.branches.slice(0, displayLimit),
+						hasMore: allBranchData.branches.length > displayLimit,
+					}
+				: undefined,
+		[allBranchData, displayLimit],
+	);
 
 	const { data: allWorkspaces = [] } =
 		electronTrpc.workspaces.getAll.useQuery();
@@ -222,7 +230,7 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 	const hasMore = filterMode === "all" && (effectiveData?.hasMore ?? false);
 	useEffect(() => {
 		const el = sentinelRef.current;
-		if (!el || !hasMore || isFetching) return;
+		if (!el || !hasMore) return;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0]?.isIntersecting) {
@@ -233,7 +241,7 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 		);
 		observer.observe(el);
 		return () => observer.disconnect();
-	}, [hasMore, isFetching]);
+	}, [hasMore]);
 
 	const handleCreate = useCallback(
 		(branchName: string) => {
@@ -479,9 +487,7 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 					<div
 						ref={sentinelRef}
 						className="flex items-center justify-center py-2 text-xs text-muted-foreground"
-					>
-						{isFetching ? "Loading more..." : ""}
-					</div>
+					/>
 				)}
 			</CommandGroup>
 		</>
