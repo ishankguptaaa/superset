@@ -1,5 +1,6 @@
 import { V2ProjectSection } from "./components/V2ProjectSection";
 import { V2SidebarEmptyState } from "./components/V2SidebarEmptyState";
+import { V2SidebarFooter } from "./components/V2SidebarFooter";
 import { V2SidebarHeader } from "./components/V2SidebarHeader";
 import { useV2SidebarData } from "./hooks/useV2SidebarData";
 
@@ -40,6 +41,8 @@ export function V2WorkspaceSidebar({
 					</div>
 				)}
 			</div>
+
+			<V2SidebarFooter />
 		</div>
 	);
 }

@@ -134,7 +134,7 @@ export function V2NewWorkspaceModalContent({
 
 	return (
 		<>
-			<div className="flex items-center justify-between border-b px-3 py-2">
+			<div className="flex items-center justify-between border-b px-4 py-2.5">
 				<Tabs
 					value={draft.activeTab}
 					onValueChange={(value) =>
@@ -148,13 +148,14 @@ export function V2NewWorkspaceModalContent({
 						<TabsTrigger value="branches">Branches</TabsTrigger>
 					</TabsList>
 				</Tabs>
-				<div className="flex items-center gap-1.5">
+				<div className="flex items-center gap-1">
 					<DevicePicker
 						selectedDeviceId={draft.selectedDeviceId}
 						onSelectDevice={(selectedDeviceId) =>
 							updateDraft({ selectedDeviceId })
 						}
 					/>
+					<div className="mx-0.5 h-4 w-px bg-border" />
 					<V2ProjectSelector
 						selectedProjectId={draft.selectedProjectId}
 						onSelectProject={(selectedProjectId) =>

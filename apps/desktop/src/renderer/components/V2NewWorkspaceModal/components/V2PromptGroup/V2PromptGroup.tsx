@@ -135,7 +135,7 @@ export function V2PromptGroup({
 			return;
 		}
 		const name = branchSlug || trimmedPrompt || "workspace";
-		const branch = branchSlug || "workspace";
+		const branch = branchPreview || "workspace";
 		void runAsyncAction(
 			createWorkspace({
 				projectId,
@@ -177,7 +177,7 @@ export function V2PromptGroup({
 	};
 
 	return (
-		<div className="p-3 space-y-3">
+		<div className="px-4 py-4 space-y-3">
 			<Textarea
 				ref={textareaRef}
 				className="min-h-24 max-h-48 text-sm resize-y field-sizing-fixed"

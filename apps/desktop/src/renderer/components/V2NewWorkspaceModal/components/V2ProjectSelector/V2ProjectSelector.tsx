@@ -40,11 +40,11 @@ export function V2ProjectSelector({
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
-				<Button variant="ghost" size="sm">
+				<Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
 					<span className="truncate max-w-[140px]">
 						{selectedProject?.name ?? "Select project"}
 					</span>
-					<HiChevronUpDown className="size-3.5" />
+					<HiChevronUpDown className="size-3" />
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent align="end" className="w-60 p-0">

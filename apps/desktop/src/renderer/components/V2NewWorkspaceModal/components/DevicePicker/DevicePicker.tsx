@@ -1,12 +1,15 @@
+import { Button } from "@superset/ui/button";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@superset/ui/select";
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandItem,
+	CommandList,
+} from "@superset/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@superset/ui/popover";
 import { useLiveQuery } from "@tanstack/react-db";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { HiCheck, HiChevronUpDown } from "react-icons/hi2";
 import { electronTrpc } from "renderer/lib/electron-trpc";
 import { useCollections } from "renderer/routes/_authenticated/providers/CollectionsProvider";
 
@@ -19,6 +22,7 @@ export function DevicePicker({
 	selectedDeviceId,
 	onSelectDevice,
 }: DevicePickerProps) {
+	const [open, setOpen] = useState(false);
 	const collections = useCollections();
 	const { data: deviceInfo } = electronTrpc.auth.getDeviceInfo.useQuery();
 
@@ -59,29 +63,57 @@ export function DevicePicker({
 		);
 	}, [allDevices, localHostDevice, accessibleDeviceIds]);
 
-	const effectiveValue = selectedDeviceId ?? "local";
+	const selectedLabel = useMemo(() => {
+		if (!selectedDeviceId || selectedDeviceId === localHostDevice?.id) {
+			return "This device";
+		}
+		const device = otherDevices.find((d) => d.id === selectedDeviceId);
+		return device?.name ?? "Select device";
+	}, [selectedDeviceId, localHostDevice, otherDevices]);
 
 	return (
-		<Select
-			value={effectiveValue}
-			onValueChange={(value) =>
-				onSelectDevice(value === "local" ? null : value)
-			}
-		>
-			<SelectTrigger className="h-7 text-xs w-auto min-w-[120px] gap-1">
-				<SelectValue placeholder="Select device" />
-			</SelectTrigger>
-			<SelectContent>
-				<SelectItem value="local">
-					This device
-					{localHostDevice ? ` (${localHostDevice.name})` : ""}
-				</SelectItem>
-				{otherDevices.map((device) => (
-					<SelectItem key={device.id} value={device.id}>
-						{device.name}
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+					<span className="truncate max-w-[140px]">{selectedLabel}</span>
+					<HiChevronUpDown className="size-3" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent align="end" className="w-52 p-0">
+				<Command>
+					<CommandList>
+						<CommandEmpty>No devices found.</CommandEmpty>
+						<CommandGroup>
+							<CommandItem
+								value="This device"
+								onSelect={() => {
+									onSelectDevice(null);
+									setOpen(false);
+								}}
+							>
+								This device
+								{localHostDevice ? ` (${localHostDevice.name})` : ""}
+								{!selectedDeviceId && <HiCheck className="ml-auto size-4" />}
+							</CommandItem>
+							{otherDevices.map((device) => (
+								<CommandItem
+									key={device.id}
+									value={device.name}
+									onSelect={() => {
+										onSelectDevice(device.id);
+										setOpen(false);
+									}}
+								>
+									{device.name}
+									{device.id === selectedDeviceId && (
+										<HiCheck className="ml-auto size-4" />
+									)}
+								</CommandItem>
+							))}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
 	);
 }

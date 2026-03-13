@@ -4,9 +4,11 @@ import { useCollections } from "renderer/routes/_authenticated/providers/Collect
 import { useV2ProjectLocalMetaStore } from "renderer/stores/v2-project-local-meta";
 import type { V2SidebarProject, V2SidebarWorkspace } from "../../types";
 
+const DEFAULT_META = { isCollapsed: false, tabOrder: 0 };
+
 export function useV2SidebarData() {
 	const collections = useCollections();
-	const { getProjectMeta, toggleProjectCollapsed } =
+	const { toggleProjectCollapsed, projects: projectMetas } =
 		useV2ProjectLocalMetaStore();
 
 	const { data: projects = [] } = useLiveQuery(
@@ -39,14 +41,14 @@ export function useV2SidebarData() {
 
 		return [...projects]
 			.sort((a, b) => {
-				const metaA = getProjectMeta(a.id);
-				const metaB = getProjectMeta(b.id);
+				const metaA = projectMetas[a.id] ?? DEFAULT_META;
+				const metaB = projectMetas[b.id] ?? DEFAULT_META;
 				const orderDiff = metaA.tabOrder - metaB.tabOrder;
 				if (orderDiff !== 0) return orderDiff;
 				return a.name.localeCompare(b.name);
 			})
 			.map((project) => {
-				const meta = getProjectMeta(project.id);
+				const meta = projectMetas[project.id] ?? DEFAULT_META;
 				return {
 					id: project.id,
 					name: project.name,
@@ -60,7 +62,7 @@ export function useV2SidebarData() {
 					),
 				};
 			});
-	}, [projects, workspaces, getProjectMeta]);
+	}, [projects, workspaces, projectMetas]);
 
 	const totalWorkspaceCount = useMemo(
 		() =>
