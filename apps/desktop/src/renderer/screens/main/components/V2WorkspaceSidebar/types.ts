@@ -13,6 +13,7 @@ export interface V2SidebarProject {
 	name: string;
 	slug: string;
 	githubRepositoryId: string | null;
+	githubOwner: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 	isCollapsed: boolean;

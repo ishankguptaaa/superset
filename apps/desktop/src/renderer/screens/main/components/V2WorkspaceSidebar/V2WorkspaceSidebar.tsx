@@ -27,18 +27,17 @@ export function V2WorkspaceSidebar({
 				{isEmpty ? (
 					<V2SidebarEmptyState />
 				) : (
-					<div className="space-y-3 px-2 py-3">
-						{groups.map((project) => (
-							<V2ProjectSection
-								key={project.id}
-								projectId={project.id}
-								projectName={project.name}
-								isCollapsed={project.isCollapsed}
-								workspaces={project.workspaces}
-								onToggleCollapse={toggleProjectCollapsed}
-							/>
-						))}
-					</div>
+					groups.map((project) => (
+						<V2ProjectSection
+							key={project.id}
+							projectId={project.id}
+							projectName={project.name}
+							githubOwner={project.githubOwner}
+							isCollapsed={project.isCollapsed}
+							workspaces={project.workspaces}
+							onToggleCollapse={toggleProjectCollapsed}
+						/>
+					))
 				)}
 			</div>
 

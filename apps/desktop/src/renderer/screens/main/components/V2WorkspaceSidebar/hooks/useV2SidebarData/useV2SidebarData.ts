@@ -21,7 +21,21 @@ export function useV2SidebarData() {
 		[collections],
 	);
 
+	const { data: githubRepos = [] } = useLiveQuery(
+		(q) =>
+			q.from({ repos: collections.githubRepositories }).select(({ repos }) => ({
+				id: repos.id,
+				owner: repos.owner,
+			})),
+		[collections],
+	);
+
 	const groups = useMemo<V2SidebarProject[]>(() => {
+		const repoOwnerMap = new Map<string, string>();
+		for (const repo of githubRepos) {
+			repoOwnerMap.set(repo.id, repo.owner);
+		}
+
 		const workspacesByProject = new Map<string, V2SidebarWorkspace[]>();
 
 		for (const workspace of workspaces) {
@@ -49,11 +63,13 @@ export function useV2SidebarData() {
 			})
 			.map((project) => {
 				const meta = projectMetas[project.id] ?? DEFAULT_META;
+				const repoId = project.githubRepositoryId ?? null;
 				return {
 					id: project.id,
 					name: project.name,
 					slug: project.slug,
-					githubRepositoryId: project.githubRepositoryId ?? null,
+					githubRepositoryId: repoId,
+					githubOwner: repoId ? (repoOwnerMap.get(repoId) ?? null) : null,
 					createdAt: project.createdAt,
 					updatedAt: project.updatedAt,
 					isCollapsed: meta.isCollapsed,
@@ -62,7 +78,7 @@ export function useV2SidebarData() {
 					),
 				};
 			});
-	}, [projects, workspaces, projectMetas]);
+	}, [projects, workspaces, projectMetas, githubRepos]);
 
 	const totalWorkspaceCount = useMemo(
 		() =>

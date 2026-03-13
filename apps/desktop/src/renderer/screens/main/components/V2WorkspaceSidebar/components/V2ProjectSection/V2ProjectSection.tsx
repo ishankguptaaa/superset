@@ -4,11 +4,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { HiChevronRight, HiMiniPlus } from "react-icons/hi2";
 import { useOpenNewWorkspaceModal } from "renderer/stores/new-workspace-modal";
 import type { V2SidebarWorkspace } from "../../types";
+import { V2ProjectThumbnail } from "../V2ProjectThumbnail";
 import { V2WorkspaceListItem } from "../V2WorkspaceListItem";
 
 interface V2ProjectSectionProps {
 	projectId: string;
 	projectName: string;
+	githubOwner: string | null;
 	isCollapsed: boolean;
 	workspaces: V2SidebarWorkspace[];
 	onToggleCollapse: (projectId: string) => void;
@@ -17,6 +19,7 @@ interface V2ProjectSectionProps {
 export function V2ProjectSection({
 	projectId,
 	projectName,
+	githubOwner,
 	isCollapsed,
 	workspaces,
 	onToggleCollapse,
@@ -24,7 +27,7 @@ export function V2ProjectSection({
 	const openModal = useOpenNewWorkspaceModal();
 
 	return (
-		<div className="space-y-0.5">
+		<div className="border-b border-border last:border-b-0">
 			<div
 				className={cn(
 					"flex items-center w-full pl-3 pr-2 py-1.5 text-sm font-medium",
@@ -36,6 +39,10 @@ export function V2ProjectSection({
 					onClick={() => onToggleCollapse(projectId)}
 					className="flex items-center gap-2 flex-1 min-w-0 py-0.5 text-left cursor-pointer"
 				>
+					<V2ProjectThumbnail
+						projectName={projectName}
+						githubOwner={githubOwner}
+					/>
 					<span className="truncate">{projectName}</span>
 					<span className="text-xs text-muted-foreground tabular-nums font-normal">
 						({workspaces.length})
@@ -84,7 +91,7 @@ export function V2ProjectSection({
 						transition={{ duration: 0.15, ease: "easeOut" }}
 						className="overflow-hidden"
 					>
-						<div className="space-y-0.5">
+						<div className="pb-1">
 							{workspaces.map((workspace) => (
 								<V2WorkspaceListItem
 									key={workspace.id}
