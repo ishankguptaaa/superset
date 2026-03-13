@@ -12,7 +12,7 @@ import {
 } from "react-icons/go";
 import { SiGithub } from "react-icons/si";
 import { useDebouncedValue } from "renderer/hooks/useDebouncedValue";
-import { navigateToWorkspace } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
+import { navigateToV2Workspace } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
 import { useCollections } from "renderer/routes/_authenticated/providers/CollectionsProvider";
 import { useV2CreateWorkspace } from "../../hooks/useV2CreateWorkspace";
 import { useV2NewWorkspaceModalDraft } from "../../V2NewWorkspaceModalDraftContext";
@@ -131,7 +131,7 @@ export function V2PullRequestsGroup({
 						const existingId = workspaceByBranch.get(pr.headBranch);
 						if (existingId) {
 							closeAndResetDraft();
-							navigateToWorkspace(existingId, navigate);
+							navigateToV2Workspace(existingId, navigate);
 							return;
 						}
 						void runAsyncAction(

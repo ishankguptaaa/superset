@@ -18,7 +18,7 @@ import {
 } from "renderer/routes/_authenticated/_dashboard/tasks/components/TasksView/components/shared/StatusIcon";
 import { useHybridSearch } from "renderer/routes/_authenticated/_dashboard/tasks/components/TasksView/hooks/useHybridSearch";
 import { compareTasks } from "renderer/routes/_authenticated/_dashboard/tasks/components/TasksView/utils/sorting";
-import { navigateToWorkspace } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
+import { navigateToV2Workspace } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
 import { useCollections } from "renderer/routes/_authenticated/providers/CollectionsProvider";
 import { useV2CreateWorkspace } from "../../hooks/useV2CreateWorkspace";
 import { useV2NewWorkspaceModalDraft } from "../../V2NewWorkspaceModalDraftContext";
@@ -152,7 +152,7 @@ export function V2IssuesGroup({
 						const existingId = workspaceByBranch.get(task.slug.toLowerCase());
 						if (existingId) {
 							closeAndResetDraft();
-							navigateToWorkspace(existingId, navigate);
+							navigateToV2Workspace(existingId, navigate);
 							return;
 						}
 						void runAsyncAction(

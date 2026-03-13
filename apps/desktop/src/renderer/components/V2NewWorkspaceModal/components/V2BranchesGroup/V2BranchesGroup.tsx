@@ -8,7 +8,7 @@ import { useCallback, useMemo } from "react";
 import { GoArrowUpRight, GoGitBranch, GoGlobe } from "react-icons/go";
 import { useDebouncedValue } from "renderer/hooks/useDebouncedValue";
 import { electronTrpc } from "renderer/lib/electron-trpc";
-import { navigateToWorkspace } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
+import { navigateToV2Workspace } from "renderer/routes/_authenticated/_dashboard/utils/workspace-navigation";
 import { useCollections } from "renderer/routes/_authenticated/providers/CollectionsProvider";
 import { useV2CreateWorkspace } from "../../hooks/useV2CreateWorkspace";
 import { useV2NewWorkspaceModalDraft } from "../../V2NewWorkspaceModalDraftContext";
@@ -127,7 +127,7 @@ export function V2BranchesGroup({
 	const handleOpen = useCallback(
 		(workspaceId: string) => {
 			closeAndResetDraft();
-			navigateToWorkspace(workspaceId, navigate);
+			navigateToV2Workspace(workspaceId, navigate);
 		},
 		[closeAndResetDraft, navigate],
 	);

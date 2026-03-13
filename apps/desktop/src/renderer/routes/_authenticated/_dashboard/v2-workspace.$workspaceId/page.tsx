@@ -1,5 +1,7 @@
+import { FEATURE_FLAGS } from "@superset/shared/constants";
 import { useLiveQuery } from "@tanstack/react-db";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import { useMemo } from "react";
 import { useCollections } from "renderer/routes/_authenticated/providers/CollectionsProvider";
 
@@ -10,6 +12,8 @@ export const Route = createFileRoute(
 });
 
 function V2WorkspacePage() {
+	const isV2CloudEnabled =
+		useFeatureFlagEnabled(FEATURE_FLAGS.V2_CLOUD) ?? false;
 	const { workspaceId } = Route.useParams();
 	const collections = useCollections();
 
@@ -42,6 +46,10 @@ function V2WorkspacePage() {
 		() => devices.find((d) => d.id === workspace?.deviceId),
 		[devices, workspace?.deviceId],
 	);
+
+	if (!isV2CloudEnabled) {
+		return <Navigate to="/workspace" replace />;
+	}
 
 	if (!workspace) {
 		return (
