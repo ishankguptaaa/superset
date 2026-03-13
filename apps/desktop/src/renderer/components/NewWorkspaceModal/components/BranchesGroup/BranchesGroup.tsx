@@ -47,16 +47,17 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 		setDisplayLimit(PAGE_SIZE);
 	}
 
-	// Server-side searched branch query (fetch all matches, paginate client-side)
+	// Server-side searched + paginated branch query
 	const {
 		data: searchData,
 		isLoading: isSearchLoading,
+		isFetching,
 		isError: isSearchError,
 	} = electronTrpc.projects.searchBranches.useQuery(
 		{
 			projectId: projectId ?? "",
 			search: debouncedQuery,
-			limit: 200,
+			limit: displayLimit,
 			offset: 0,
 		},
 		{
@@ -86,7 +87,7 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 	}
 
 	// Combine: prefer searchBranches, fall back to getBranchesLocal with client-side search
-	const allBranchData = useMemo(() => {
+	const effectiveData = useMemo(() => {
 		if (searchData && !isSearchError) return searchData;
 		if (!localBranchData) return undefined;
 		const query = debouncedQuery.trim().toLowerCase();
@@ -96,22 +97,18 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 				)
 			: localBranchData.branches;
 		return {
-			branches: filtered,
+			branches: filtered.slice(0, displayLimit),
 			defaultBranch: localBranchData.defaultBranch,
 			totalCount: filtered.length,
-			hasMore: false,
+			hasMore: filtered.length > displayLimit,
 		};
-	}, [searchData, isSearchError, localBranchData, debouncedQuery]);
-
-	// Client-side pagination to avoid scroll resets on refetch
-	const effectiveData = useMemo(() => {
-		if (!allBranchData) return undefined;
-		return {
-			...allBranchData,
-			branches: allBranchData.branches.slice(0, displayLimit),
-			hasMore: allBranchData.branches.length > displayLimit,
-		};
-	}, [allBranchData, displayLimit]);
+	}, [
+		searchData,
+		isSearchError,
+		localBranchData,
+		debouncedQuery,
+		displayLimit,
+	]);
 
 	const { data: allWorkspaces = [] } =
 		electronTrpc.workspaces.getAll.useQuery();
@@ -225,7 +222,7 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 	const hasMore = filterMode === "all" && (effectiveData?.hasMore ?? false);
 	useEffect(() => {
 		const el = sentinelRef.current;
-		if (!el || !hasMore) return;
+		if (!el || !hasMore || isFetching) return;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0]?.isIntersecting) {
@@ -236,7 +233,7 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 		);
 		observer.observe(el);
 		return () => observer.disconnect();
-	}, [hasMore]);
+	}, [hasMore, isFetching]);
 
 	const handleCreate = useCallback(
 		(branchName: string) => {
@@ -482,7 +479,9 @@ export function BranchesGroup({ projectId }: BranchesGroupProps) {
 					<div
 						ref={sentinelRef}
 						className="flex items-center justify-center py-2 text-xs text-muted-foreground"
-					/>
+					>
+						{isFetching ? "Loading more..." : ""}
+					</div>
 				)}
 			</CommandGroup>
 		</>
