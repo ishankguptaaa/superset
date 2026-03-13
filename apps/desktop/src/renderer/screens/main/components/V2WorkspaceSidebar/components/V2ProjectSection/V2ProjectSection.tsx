@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { HiChevronRight } from "react-icons/hi2";
+import { LuPlus } from "react-icons/lu";
+import { useOpenNewWorkspaceModal } from "renderer/stores/new-workspace-modal";
 import type { V2SidebarWorkspace } from "../../types";
 import { V2WorkspaceListItem } from "../V2WorkspaceListItem";
 
@@ -18,23 +20,37 @@ export function V2ProjectSection({
 	workspaces,
 	onToggleCollapse,
 }: V2ProjectSectionProps) {
+	const openModal = useOpenNewWorkspaceModal();
+
 	return (
 		<div className="space-y-0.5">
-			<button
-				type="button"
-				onClick={() => onToggleCollapse(projectId)}
-				className="flex w-full items-center gap-1 rounded-md px-2 py-1 text-left text-[11px] font-medium tracking-wider text-muted-foreground uppercase hover:bg-muted/50"
-			>
-				<HiChevronRight
-					className={`size-3 shrink-0 transition-transform duration-150 ${
-						isCollapsed ? "" : "rotate-90"
-					}`}
-				/>
-				<span className="truncate">{projectName}</span>
-				<span className="ml-auto text-[10px] tabular-nums opacity-60">
+			<div className="group flex w-full items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+				<button
+					type="button"
+					onClick={() => onToggleCollapse(projectId)}
+					className="flex items-center gap-1 min-w-0 flex-1 hover:text-foreground transition-colors"
+				>
+					<HiChevronRight
+						className={`size-3 shrink-0 transition-transform duration-150 ${
+							isCollapsed ? "" : "rotate-90"
+						}`}
+					/>
+					<span className="truncate">{projectName}</span>
+				</button>
+				<button
+					type="button"
+					onClick={(e) => {
+						e.stopPropagation();
+						openModal(projectId);
+					}}
+					className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:text-foreground transition-all"
+				>
+					<LuPlus className="size-3" />
+				</button>
+				<span className="text-[10px] tabular-nums opacity-60">
 					{workspaces.length}
 				</span>
-			</button>
+			</div>
 
 			<AnimatePresence initial={false}>
 				{!isCollapsed && (
