@@ -1,12 +1,14 @@
 import {
-	CommandDialog,
+	Command,
 	CommandEmpty,
 	CommandGroup,
 	CommandInput,
 	CommandItem,
 	CommandList,
 } from "@superset/ui/command";
+import { Popover, PopoverAnchor, PopoverContent } from "@superset/ui/popover";
 import Fuse from "fuse.js";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { electronTrpc } from "renderer/lib/electron-trpc";
 import {
@@ -28,6 +30,7 @@ interface PRLinkCommandProps {
 	onOpenChange: (open: boolean) => void;
 	onSelect: (pr: SelectedPR) => void;
 	projectId: string | null;
+	children: ReactNode;
 }
 
 export function PRLinkCommand({
@@ -35,6 +38,7 @@ export function PRLinkCommand({
 	onOpenChange,
 	onSelect,
 	projectId,
+	children,
 }: PRLinkCommandProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 
@@ -83,65 +87,71 @@ export function PRLinkCommand({
 			url: pr.url,
 			state: pr.state,
 		});
+		handleClose();
+	};
+
+	const handleClose = () => {
+		setSearchQuery("");
 		onOpenChange(false);
 	};
 
-	const handleOpenChange = (nextOpen: boolean) => {
-		if (!nextOpen) setSearchQuery("");
-		onOpenChange(nextOpen);
-	};
-
 	return (
-		<CommandDialog
-			open={open}
-			onOpenChange={handleOpenChange}
-			modal
-			title="Link pull request"
-			description="Search for a pull request to link"
-			showCloseButton={false}
-		>
-			<CommandInput
-				placeholder="Search pull requests..."
-				value={searchQuery}
-				onValueChange={setSearchQuery}
-			/>
-			<CommandList>
-				{searchResults.length === 0 && (
-					<CommandEmpty>
-						{isLoading
-							? "Loading pull requests..."
-							: "No open pull requests found."}
-					</CommandEmpty>
-				)}
-				{searchResults.length > 0 && (
-					<CommandGroup
-						heading={searchQuery ? "Results" : "Open pull requests"}
-					>
-						{searchResults.map((pr) => (
-							<CommandItem
-								key={pr.prNumber}
-								value={`${pr.prNumber}-${pr.title}`}
-								onSelect={() => handleSelect(pr)}
-								className="group"
+		<Popover open={open}>
+			<PopoverAnchor asChild>{children}</PopoverAnchor>
+			<PopoverContent
+				className="w-80 p-0"
+				align="end"
+				side="top"
+				onWheel={(event) => event.stopPropagation()}
+				onPointerDownOutside={handleClose}
+				onEscapeKeyDown={handleClose}
+				onFocusOutside={(e) => e.preventDefault()}
+			>
+				<Command shouldFilter={false}>
+					<CommandInput
+						placeholder="Search pull requests..."
+						value={searchQuery}
+						onValueChange={setSearchQuery}
+					/>
+					<CommandList className="max-h-[280px]">
+						{searchResults.length === 0 && (
+							<CommandEmpty>
+								{isLoading
+									? "Loading pull requests..."
+									: "No open pull requests found."}
+							</CommandEmpty>
+						)}
+						{searchResults.length > 0 && (
+							<CommandGroup
+								heading={searchQuery ? "Results" : "Open pull requests"}
 							>
-								<PRIcon
-									state={pr.state as PRState}
-									className="size-3.5 shrink-0"
-								/>
-								<span className="shrink-0 font-mono text-xs text-muted-foreground">
-									#{pr.prNumber}
-								</span>
-								<span className="min-w-0 flex-1 truncate text-xs">
-									{pr.title}
-								</span>
-								<span className="shrink-0 hidden text-xs text-muted-foreground group-data-[selected=true]:inline">
-									Link ↵
-								</span>
-							</CommandItem>
-						))}
-					</CommandGroup>
-				)}
-			</CommandList>
-		</CommandDialog>
+								{searchResults.map((pr) => (
+									<CommandItem
+										key={pr.prNumber}
+										value={`${pr.prNumber}-${pr.title}`}
+										onSelect={() => handleSelect(pr)}
+										className="group"
+									>
+										<PRIcon
+											state={pr.state as PRState}
+											className="size-3.5 shrink-0"
+										/>
+										<span className="shrink-0 font-mono text-xs text-muted-foreground">
+											#{pr.prNumber}
+										</span>
+										<span className="min-w-0 flex-1 truncate text-xs">
+											{pr.title}
+										</span>
+										<span className="shrink-0 hidden text-xs text-muted-foreground group-data-[selected=true]:inline">
+											Link ↵
+										</span>
+									</CommandItem>
+								))}
+							</CommandGroup>
+						)}
+					</CommandList>
+				</Command>
+			</PopoverContent>
+		</Popover>
 	);
 }

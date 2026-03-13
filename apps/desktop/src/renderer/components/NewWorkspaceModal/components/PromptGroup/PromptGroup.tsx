@@ -736,10 +736,21 @@ function PromptGroupInner({
 						</Select>
 					</PromptInputTools>
 					<div className="flex items-center gap-2">
-						<PlusMenu
-							onOpenIssueLink={() => setIssueLinkOpen(true)}
-							onOpenPRLink={() => setPRLinkOpen(true)}
-						/>
+						<PRLinkCommand
+							open={prLinkOpen}
+							onOpenChange={setPRLinkOpen}
+							onSelect={setLinkedPR}
+							projectId={projectId}
+						>
+							<div>
+								<PlusMenu
+									onOpenIssueLink={() => setIssueLinkOpen(true)}
+									onOpenPRLink={() =>
+										requestAnimationFrame(() => setPRLinkOpen(true))
+									}
+								/>
+							</div>
+						</PRLinkCommand>
 						<PromptInputSubmit
 							className="size-[22px] rounded-full border border-transparent bg-foreground/10 shadow-none p-[5px] hover:bg-foreground/20"
 							disabled={createWorkspace.isPending || createFromPr.isPending}
@@ -767,7 +778,12 @@ function PromptGroupInner({
 						onImportRepo={onImportRepo}
 						onNewProject={onNewProject}
 					/>
-					{!linkedPR && (
+					{linkedPR ? (
+						<span className="flex items-center gap-1 text-xs text-muted-foreground">
+							<LuGitPullRequest className="size-3 shrink-0" />
+							based off PR #{linkedPR.prNumber}
+						</span>
+					) : (
 						<BaseBranchPickerInline
 							effectiveBaseBranch={effectiveBaseBranch}
 							defaultBranch={branchData?.defaultBranch}
@@ -787,13 +803,6 @@ function PromptGroupInner({
 				open={issueLinkOpen}
 				onOpenChange={setIssueLinkOpen}
 				onSelect={addLinkedIssue}
-			/>
-
-			<PRLinkCommand
-				open={prLinkOpen}
-				onOpenChange={setPRLinkOpen}
-				onSelect={setLinkedPR}
-				projectId={projectId}
 			/>
 		</div>
 	);
